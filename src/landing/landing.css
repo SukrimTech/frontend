@@ -1,0 +1,245 @@
+/*
+ * The landing page's own base styles, from the design's <helmet> block.
+ *
+ * Everything is scoped under `.sk` rather than applied globally. The design
+ * sets `background:#FFFFFF;color:#111111` on html and body and a flat link
+ * colour, and the Workbench is a themed application with a dark mode — letting
+ * those rules escape this page would quietly override it.
+ *
+ * The exception is ::selection, which cannot be scoped to a subtree in any
+ * useful way, so it is given the page's own root as its ancestor.
+ */
+
+.sk a { color: #111111; text-decoration: none; }
+.sk a:hover { color: #111111; }
+.sk ::selection { background: #C6EBC5; color: #111111; }
+
+/* The design's body rule, applied to the page root instead of to <body>. */
+.sk {
+  -webkit-font-smoothing: antialiased;
+  /* The app's body sets line-height 1.6 for its docs. The design leaves it at
+   * the browser default, and every line of text that does not set its own --
+   * the marquees, the eyebrows, the nav -- grew by a third under the app's. */
+  line-height: normal;
+}
+.sk * { box-sizing: border-box; }
+
+/* The app's stylesheet pads every <section> by up to 120px top and bottom.
+ * The design's sections carry no padding of their own -- the spacing is on
+ * the inner wrapper -- so that rule doubled every gap between sections and
+ * left a band of mint under the CTA's marquee. */
+.sk section { padding: 0; }
+.sk a:hover { text-decoration: none; }
+
+/* The sketches animate their strokes on load: each path is dashed to its own
+ * length and drawn in. `--t` is the per-path duration the artwork sets inline,
+ * and `pathLength="1"` makes one unit of dash equal the whole path whatever
+ * its real length, so a long feeder and a short stub draw in the same time. */
+.sk img[src$=".svg"] { max-width: 100%; }
+
+@media (prefers-reduced-motion: reduce) {
+  /* Motion is already gated in motion.js, but the artwork's own CSS
+   * animations live inside the SVG files and are not reachable from there. */
+  .sk [data-lens] img { opacity: 1 !important; }
+}
+
+/* ===================================================================== *
+ * The buildings & industry carousel (Carousel.jsx).                      *
+ * Geometry is written per frame from JS; this file is only the look.     *
+ * ===================================================================== */
+
+.sk .kc { position: relative; }
+
+.sk .kc-stage {
+  position: sticky; top: 0; height: 100vh; overflow: hidden;
+  background: #FFFFFF;
+  perspective: 1100px; perspective-origin: 50% 46%;
+  cursor: grab; touch-action: pan-y; user-select: none;
+}
+.sk .kc-stage.dragging { cursor: grabbing; }
+
+.sk .kc-scene {
+  position: absolute; left: 50%; top: 50%; width: 0; height: 0;
+  transform-style: preserve-3d;
+}
+.sk .kc-strip {
+  position: absolute; overflow: hidden;
+  backface-visibility: hidden; will-change: transform;
+}
+
+/* The card. Every strip draws the whole of it and shows one column. */
+.sk .kc-face {
+  position: absolute; top: 0;
+  display: flex; flex-direction: column;
+  background: #FFFFFF; border: 1px solid #111111; border-radius: 22px;
+  overflow: hidden;
+}
+.sk .kc-face-top {
+  display: flex; justify-content: space-between; padding: 18px 22px 0;
+  font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  letter-spacing: .05em; text-transform: uppercase;
+}
+.sk .kc-face-art { flex: 1; min-height: 0; width: 100%; object-fit: contain; padding: 4% 8% 0; display: block; }
+.sk .kc-face-foot {
+  display: flex; justify-content: space-between; align-items: flex-end; gap: 16px;
+  padding: 0 22px 20px;
+}
+.sk .kc-face-title {
+  font-size: clamp(22px, 2.3vw, 36px); font-weight: 700; letter-spacing: -.03em; line-height: 1.02;
+  background: #C6EBC5; padding: 2px 8px; margin-left: -8px;
+}
+.sk .kc-arrow {
+  flex: none; width: 44px; height: 44px; border-radius: 50%;
+  border: 1px solid #111111; display: flex; align-items: center; justify-content: center;
+  font-family: 'JetBrains Mono', monospace; background: #FFFFFF;
+}
+.sk .kc-arrow-dark { background: #111111; color: #FFFFFF; }
+
+/* Bottom bar: where you are, and how to move. */
+.sk .kc-hud {
+  position: absolute; left: clamp(20px, 4vw, 56px); right: clamp(20px, 4vw, 56px); bottom: 28px;
+  display: flex; align-items: center; gap: 20px;
+  font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  letter-spacing: .05em; text-transform: uppercase; pointer-events: none;
+  transition: opacity .3s;
+}
+.sk .kc-track { flex: 1; height: 1px; background: rgba(17,17,17,.2); position: relative; }
+.sk .kc-track i { position: absolute; inset: 0; background: #111111; transform-origin: left center; transform: scaleX(0); }
+.sk.sk-expanded .kc-hud { opacity: 0; }
+
+.sk .kc-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); margin: 0; padding: 0; }
+.sk .kc-sr button:focus { position: fixed; left: 16px; top: 16px; width: auto; height: auto; clip: auto; z-index: 50; }
+
+/* The open card: flat, nearly full screen, with its neighbours peeking. */
+.sk .kc-detail {
+  position: absolute; left: 50%; top: 50%; z-index: 5;
+  opacity: 0; pointer-events: none; cursor: auto;
+}
+.sk .kc-panel {
+  position: relative; width: 100%; height: 100%;
+  display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 6fr); gap: clamp(24px, 4vw, 72px);
+  background: #FFFFFF; border: 1px solid #111111; border-radius: 28px;
+  padding: clamp(28px, 4vw, 56px); overflow: hidden;
+}
+/* The middle panel sits over its neighbours; they are a click away. */
+.sk .kc-detail.current { z-index: 6; }
+.sk .kc-detail:not(.current) { cursor: pointer; }
+.sk .kc-detail:not(.current) .kc-panel * { pointer-events: none; }
+.sk .kc-stage.dragging .kc-detail { cursor: grabbing; }
+.sk .kc-close {
+  position: absolute; top: 24px; right: 24px; z-index: 2;
+  width: 56px; height: 56px; border-radius: 50%; border: 0;
+  background: #111111; color: #FFFFFF; font-size: 26px; line-height: 1; cursor: pointer;
+}
+.sk .kc-close:hover { background: #C6EBC5; color: #111111; }
+.sk .kc-panel-text { display: flex; flex-direction: column; gap: 22px; min-height: 0; }
+.sk .kc-panel-text h3 {
+  margin: 0; font-size: clamp(36px, 4.4vw, 68px); font-weight: 700; letter-spacing: -.04em; line-height: 1;
+}
+.sk .kc-panel-text p { margin: 0; max-width: 40ch; font-size: clamp(17px, 1.4vw, 21px); line-height: 1.5; text-wrap: pretty; }
+.sk .kc-chips { display: flex; align-items: center; gap: 10px; }
+.sk .kc-chip {
+  height: 36px; display: inline-flex; align-items: center; padding: 0 16px; border-radius: 999px;
+  background: #C6EBC5; border: 1px solid #111111;
+  font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: .05em; text-transform: uppercase;
+}
+.sk .kc-panel-nav {
+  margin-top: auto; display: flex; align-items: center; gap: 14px;
+  font-family: 'JetBrains Mono', monospace; font-size: 13px;
+}
+.sk .kc-panel-nav button {
+  width: 44px; height: 44px; border-radius: 50%; border: 1px solid #111111; background: #FFFFFF;
+  font-family: 'JetBrains Mono', monospace; cursor: pointer;
+}
+.sk .kc-panel-nav button:hover:not(:disabled) { background: #C6EBC5; }
+.sk .kc-panel-nav button:disabled { opacity: .3; cursor: default; }
+.sk .kc-gallery {
+  min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  display: flex; flex-direction: column; gap: 28px; padding-right: 72px;
+  scrollbar-width: thin;
+}
+.sk .kc-gallery figure { margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.sk .kc-gallery img { width: 100%; height: auto; display: block; border: 1px solid #111111; border-radius: 14px; background: #FFFFFF; }
+.sk .kc-gallery figcaption { font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
+
+/* Opening a card hides the page's own nav, which would otherwise sit on top
+ * of the panel. motion.js sets the nav's transform inline; !important wins. */
+.sk.sk-expanded [data-nav] { transform: translateY(-100%) !important; }
+
+@media (max-width: 760px) {
+  .sk .kc-panel { grid-template-columns: 1fr; overflow-y: auto; }
+  .sk .kc-gallery { overflow: visible; padding-right: 0; }
+  .sk .kc-close { top: 14px; right: 14px; width: 44px; height: 44px; }
+  .sk .kc-hint { display: none; }
+}
+
+/* ===================================================================== *
+ * Smaller screens.                                                       *
+ * The design's inline styles already scale with clamp(); these are the   *
+ * places a fixed column layout stops fitting, overridden from here --     *
+ * !important because the design's rules are inline.                      *
+ * ===================================================================== */
+
+/* The fold-out menu; hidden until the nav no longer fits in a row. */
+.sk .sk-menu-btn {
+  display: none; height: 40px; padding: 0 16px; border-radius: 999px;
+  border: 1px solid #111111; background: #FFFFFF; color: #111111;
+  font: 500 14px/1 'Archivo', Helvetica, Arial, sans-serif; letter-spacing: .02em; cursor: pointer;
+}
+.sk .sk-menu {
+  position: absolute; left: 0; right: 0; top: 100%;
+  display: flex; flex-direction: column; padding: 8px clamp(20px, 4vw, 56px) 20px;
+  background: #FFFFFF; border-bottom: 1px solid #111111;
+}
+.sk .sk-menu a {
+  padding: 14px 0; border-bottom: 1px solid rgba(17,17,17,.12);
+  font-size: 22px; font-weight: 600; letter-spacing: -.02em;
+}
+.sk .sk-menu a:last-child { border-bottom: 0; }
+
+@media (max-width: 960px) {
+  .sk .sk-nav-link { display: none; }
+  .sk .sk-menu-btn { display: inline-flex; align-items: center; }
+}
+@media (min-width: 961px) {
+  .sk .sk-menu { display: none; }
+}
+
+/* The sticky carousel stage: on phones 100vh is taller than what shows once
+ * the browser's bars are up, which pushed the bottom bar off screen. */
+@supports (height: 100svh) {
+  .sk .kc-stage { height: 100svh; }
+}
+
+@media (max-width: 760px) {
+  /* The heading rows keep an empty first column beside the heading on wide
+   * screens. Stacked, that column becomes an empty row above it. */
+  .sk .sk-spacer { display: none; }
+
+  /* Product rows: number, title and arrow on one line, the description under
+   * them at full width -- instead of four columns, one of them two words wide. */
+  .sk .sk-row {
+    grid-template-columns: 32px minmax(0, 1fr) 44px !important;
+    grid-template-areas: "n title arrow" ". body body";
+    row-gap: 14px !important; align-items: start !important;
+  }
+  .sk .sk-row > :nth-child(1) { grid-area: n; padding-top: 6px; }
+  .sk .sk-row > :nth-child(2) { grid-area: title; }
+  .sk .sk-row > :nth-child(3) { grid-area: body; }
+  .sk .sk-row > :nth-child(4) { grid-area: arrow; }
+
+  /* Invariants: the label beside a stacked heading and explanation. */
+  .sk .sk-inv {
+    grid-template-columns: 40px minmax(0, 1fr) !important;
+    row-gap: 12px !important;
+  }
+  .sk .sk-inv > p { grid-column: 2; }
+
+  /* The carousel's bottom bar: keep the count and the track, drop the hint. */
+  .sk .kc-hud { gap: 14px; bottom: 20px; }
+}
+
+@media (max-width: 420px) {
+  /* A phone's worth of header: the wordmark gives way before the buttons do. */
+  .sk [data-nav] img[alt="SUKRIM"] { height: 18px !important; }
+}
