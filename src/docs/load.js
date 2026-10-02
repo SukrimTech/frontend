@@ -1,13 +1,15 @@
 /*
   The documentation, compiled into the app.
 
-  The markdown lives in ../docs and is written for MkDocs, so four pieces of
-  its syntax have to be translated before react-markdown will take it. Doing
-  that here rather than rewriting the source keeps one copy of the docs: the
-  same files build the static site and feed this page.
+  The markdown lives in the Sukrim repository's docs/ -- found through the
+  `@sukrim-docs` alias, which vite.config.js points at ../Sukrim/docs or at
+  SUKRIM_DOCS -- and is written for MkDocs, so four pieces of its syntax have
+  to be translated before react-markdown will take it. Doing that here rather
+  than rewriting the source keeps one copy of the docs: the same files build
+  the static site and feed this page.
 */
 
-const FILES = import.meta.glob('../../../docs/**/*.md', {
+const FILES = import.meta.glob('@sukrim-docs/**/*.md', {
   query: '?raw', import: 'default', eager: true,
 })
 
@@ -40,7 +42,7 @@ export const NAV = [
   },
 ]
 
-/** `../../../docs/agents/argus.md` → `agents/argus` */
+/** `…/docs/agents/argus.md` → `agents/argus` */
 function idOf(path) {
   return path.replace(/^.*\/docs\//, '').replace(/\.md$/, '')
 }
