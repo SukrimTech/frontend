@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Boundary from '../components/Boundary.jsx'
-import { postRoute } from '../api.js'
+import { getHealth, postRoute } from '../api.js'
 import { api, ApiError, exportUrl, pollJob } from './api.js'
 import * as A from './answer.js'
 import { ErrorCard, errorFinding } from './errors.jsx'
@@ -128,7 +128,7 @@ export default function PythiaWorkbench({ entry, onExit, onOpenModel, shared }) 
         setLibVmin((v) => v ?? o?.vmin?.default ?? null)
         await refreshFeeders()
       } catch (e) { if (live) fail(e) }
-      fetch('/api/health').then((r) => r.json()).then((h) => live && setRouterUp(Boolean(h?.router?.reachable)))
+      getHealth().then((h) => live && setRouterUp(Boolean(h?.router?.reachable)))
         .catch(() => {})
     })()
     return () => { live = false }

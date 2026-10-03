@@ -12,6 +12,8 @@
   different class because "the server is not running" is not the server saying no.
 */
 
+import { apiFetch, apiLink } from '../config.js'
+
 const BASE = '/api/pythia'
 
 export class ApiError extends Error {
@@ -49,7 +51,7 @@ async function call(method, path, body) {
   const url = BASE + path
   let res
   try {
-    res = await fetch(url, {
+    res = await apiFetch(url, {
       method,
       headers: body === undefined ? {} : { 'content-type': 'application/json' },
       body: body === undefined ? undefined : JSON.stringify(body),
@@ -106,7 +108,7 @@ export const api = {
 }
 
 export const exportUrl = (rid, vmin, z) =>
-  `${BASE}/v1/runs/${rid}/export.xlsx?${new URLSearchParams({ vmin: String(vmin), z: String(z) })}`
+  apiLink(`${BASE}/v1/runs/${rid}/export.xlsx?${new URLSearchParams({ vmin: String(vmin), z: String(z) })}`)
 
 /*
   Poll a job to settlement. The phases ARE the progress: `phases[].elapsed_s` is computed by

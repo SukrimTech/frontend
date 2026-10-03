@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { MAPTILER_KEY } from '../config.js'
 
 /*
   The feeder on the ground — grid-yukti's two Leaflet maps (dropping the feeder head, and the
@@ -27,8 +28,17 @@ import 'leaflet/dist/leaflet.css'
 
 // ⚠ Checked from this machine on 2026-10-02: CARTO's free basemaps (grid-yukti's default) now
 // answer every tile with an "API KEY REQUIRED" watermark, and tile.openstreetmap.org refuses
-// tile requests from apps outside its usage policy. Esri's three below serve without a key.
-export const BASEMAPS = [
+// tile requests from apps outside its usage policy.
+//
+// So: with a MapTiler key (VITE_MAPTILER_KEY, see .env.example) the maps use MapTiler's
+// raster tiles — sharp on retina screens via {r} = "@2x", labelled, and a proper satellite
+// layer. Without one they fall back to Esri's keyless tiles, which work but are coarser.
+// A browser map key is public by nature: restrict it to your domains in MapTiler's dashboard.
+const MAPTILER = (style, ext = 'png') =>
+  `https://api.maptiler.com/maps/${style}/256/{z}/{x}/{y}{r}.${ext}?key=${MAPTILER_KEY}`
+const MAPTILER_ATTR = '© MapTiler © OpenStreetMap contributors'
+
+const ESRI_BASEMAPS = [
   { id: 'light', label: 'Light',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
     attribution: 'Tiles © Esri — Esri, HERE, Garmin, © OpenStreetMap contributors', maxZoom: 20, maxNativeZoom: 16,
@@ -41,6 +51,19 @@ export const BASEMAPS = [
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     attribution: 'Imagery © Esri, Maxar, Earthstar Geographics', maxZoom: 20, maxNativeZoom: 19,
     retina: 'split', dark: true },
+]
+
+const MAPTILER_BASEMAPS = [
+  { id: 'light', label: 'Light', url: MAPTILER('dataviz-light'), attribution: MAPTILER_ATTR,
+    maxZoom: 20, maxNativeZoom: 20, retina: 'url' },
+  { id: 'streets', label: 'Streets', url: MAPTILER('streets-v2'), attribution: MAPTILER_ATTR,
+    maxZoom: 20, maxNativeZoom: 20, retina: 'url' },
+  { id: 'satellite', label: 'Satellite', url: MAPTILER('hybrid', 'jpg'), attribution: MAPTILER_ATTR,
+    maxZoom: 20, maxNativeZoom: 20, retina: 'url', dark: true },
+]
+
+export const BASEMAPS = [
+  ...(MAPTILER_KEY ? MAPTILER_BASEMAPS : ESRI_BASEMAPS),
   { id: 'none', label: 'Plain', url: null, attribution: null, maxZoom: 20 },
 ]
 

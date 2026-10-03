@@ -1,3 +1,5 @@
+import { apiFetch } from './config.js'
+
 // The whole API surface, in one place. Every call returns parsed JSON or
 // throws with the server's own message -- a fetch wrapper that swallows the
 // reason is worse than no wrapper.
@@ -12,12 +14,12 @@ async function json(response) {
   return body
 }
 
-export const getHealth = () => fetch('/api/health').then(json)
-export const getAgents = () => fetch('/api/agents').then(json)
-export const getExamples = () => fetch('/api/examples').then(json)
+export const getHealth = () => apiFetch('/api/health').then(json)
+export const getAgents = () => apiFetch('/api/agents').then(json)
+export const getExamples = () => apiFetch('/api/examples').then(json)
 
 export const postRoute = (prompt) =>
-  fetch('/api/route', {
+  apiFetch('/api/route', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt }),
@@ -30,11 +32,11 @@ export function postRun({ prompt = '', agent = '', example = '', files = [], ans
   form.append('example', example)
   if (answers) form.append('answers', JSON.stringify(answers))
   for (const file of files) form.append('files', file, file.name)
-  return fetch('/api/run', { method: 'POST', body: form }).then(json)
+  return apiFetch('/api/run', { method: 'POST', body: form }).then(json)
 }
 
 export const getDiagram = (example, method = 'auto') =>
-  fetch('/api/diagram', {
+  apiFetch('/api/diagram', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ example, method }),
@@ -43,7 +45,7 @@ export const getDiagram = (example, method = 'auto') =>
 /* --- the workbench: a model somebody is editing ------------------------ */
 
 const post = (url, body) =>
-  fetch(url, {
+  apiFetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body ?? {}),
@@ -66,12 +68,12 @@ export const uploadSession = (items) => {
   for (const { file, path } of items) {
     form.append('files', file, path || file.name)
   }
-  return fetch('/api/session/upload', { method: 'POST', body: form }).then(json)
+  return apiFetch('/api/session/upload', { method: 'POST', body: form }).then(json)
 }
-export const getSession = (id) => fetch(`/api/session/${id}`).then(json)
+export const getSession = (id) => apiFetch(`/api/session/${id}`).then(json)
 export const editSession = (id, edits) => post(`/api/session/${id}/edit`, { edits })
 export const undoSession = (id) => post(`/api/session/${id}/undo`)
 export const resetSession = (id) => post(`/api/session/${id}/reset`)
 export const runSession = (id, body) => post(`/api/session/${id}/run`, body)
 export const getElement = (id, collection, name) =>
-  fetch(`/api/session/${id}/element/${collection}/${encodeURIComponent(name)}`).then(json)
+  apiFetch(`/api/session/${id}/element/${collection}/${encodeURIComponent(name)}`).then(json)
