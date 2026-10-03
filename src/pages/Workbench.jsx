@@ -14,6 +14,7 @@ import { RAMPS } from '../diagram/tokens.js'
 import PythiaWorkbench from '../pythia/PythiaWorkbench.jsx'
 import { api as pythiaApi } from '../pythia/api.js'
 import '../workbench/workbench.css'
+import { useColumnResize } from '../workbench/ColumnResizer.jsx'
 
 /*
   The workbench, in the layout of the "Workbench" design: an assistant on the
@@ -95,6 +96,7 @@ const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 const collectionOf = (kind) => (kind === 'bus' ? 'buses' : `${kind}s`)
 
 export default function Workbench() {
+  const cols = useColumnResize()
   const [examples, setExamples] = useState([])
   const [health, setHealth] = useState(null)
   const [session, setSession] = useState(null)
@@ -383,13 +385,14 @@ export default function Workbench() {
               onExamples={() => { setSession(null); setMessages([]); clearResults() }}
               onPythia={() => setPythia({ kind: 'build' })} />
 
-      <div className="wb-cols">
+      <div className="wb-cols" ref={cols.ref} style={cols.style}>
         <Assistant messages={messages} busy={busy} studies={studies}
                    online={Boolean(health?.router?.reachable)}
                    onAsk={ask} onFollowUp={askFollowUp} onOpenReport={openReport}
                    onAttach={pickFiles} />
 
         <section className="wb-stage">
+          {cols.handles}
           <div className="wb-panehead wb-stagehead">
             <div role="tablist" className="wb-tabs">
               <button role="tab" aria-selected={tab === 'diagram'}

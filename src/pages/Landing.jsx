@@ -435,6 +435,11 @@ export default function Landing() {
               <a href="#" data-hover="1" style={s('color:#FFFFFF')} style-hover="text-decoration:underline">Contact</a>
             </div>
           </div>
+          <p style={s('margin:clamp(40px,5vw,64px) 0 0;font-size:15px;line-height:1.55;max-width:62ch')}>
+            <span style={s(`${MONO};font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:#C6EBC5;display:block;margin-bottom:8px`)}>Research</span>
+            Backed by research at Indian Institute of Technology, Roorkee and
+            Indian Institute of Technology, Delhi
+          </p>
           <div data-rv="mask" style={s('margin-top:clamp(56px,8vw,112px);overflow:hidden')}>
             <img data-w="1" src="assets/sukrim-wordmark.svg" alt="SUKRIM"
                  style={s('display:block;width:100%;height:auto;filter:brightness(0) invert(1)')} />

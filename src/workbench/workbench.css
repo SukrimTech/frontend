@@ -110,8 +110,25 @@
 
 .wb-cols {
   display: grid; min-height: 0;
-  grid-template-columns: clamp(240px, 26%, 340px) minmax(0, 1fr) clamp(240px, 24%, 320px);
+  /* --wb-left / --wb-right are set only once somebody drags a separator
+     (ColumnResizer.jsx); until then these clamp() defaults decide. */
+  grid-template-columns: var(--wb-left, clamp(240px, 26%, 340px)) minmax(0, 1fr)
+                         var(--wb-right, clamp(240px, 24%, 320px));
 }
+
+/* the draggable lines either side of the stage */
+.wb-stage { position: relative; }
+.wb-resize {
+  position: absolute; top: 0; bottom: 0; width: 10px; z-index: 1100;
+  cursor: col-resize; touch-action: none;
+}
+.wb-resize.left { left: -5px; }
+.wb-resize.right { right: -5px; }
+.wb-resize::after {
+  content: ''; position: absolute; top: 0; bottom: 0; left: 4px; width: 2px; background: transparent;
+  transition: background .12s;
+}
+.wb-resize:hover::after, .wb-resize.on::after { background: var(--ink); }
 
 .wb-panehead {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
@@ -215,6 +232,12 @@
   font-family: var(--mono); font-weight: 400; font-size: 12px; white-space: nowrap;
 }
 .wb td { padding: 8px 10px; border-bottom: 1px solid var(--rule); font-family: var(--mono); }
+/* The Workbench is light only, but the global stylesheet's row hover follows the site
+   theme: in dark mode `--sunken` is near-black, and a hovered row went black behind
+   near-black text. Here a hovered row is mint, with ink text, whatever the theme. */
+.wb { color-scheme: light; --sunken: #f2f0ec; }
+.wb tbody tr:hover { background: rgba(198, 235, 197, .55); }
+.wb tbody tr:hover td { color: var(--ink); }
 
 .wb-working { display: flex; align-items: center; gap: 10px; font-size: 13px; }
 .wb-dots { display: flex; gap: 4px; }
@@ -469,6 +492,7 @@ select.wb-unit { padding: 0 6px; }
   .wb-app { height: auto; min-height: 100vh; grid-template-rows: auto auto; }
   .wb-top { flex-wrap: wrap; height: auto; padding: 10px 16px; }
   .wb-cols { grid-template-columns: 1fr; }
+  .wb-resize { display: none; }
   /* As tall as the conversation, up to most of the screen -- a fixed height
      left a short session sitting above a screen of empty space. */
   .wb-assist { border-right: 0; border-bottom: 1px solid var(--ink); max-height: 75vh; }

@@ -12,6 +12,7 @@ import {
 } from './panels.jsx'
 import { AccuracyReport, AfterReport, EnvelopeReport, LibraryReport } from './reports.jsx'
 import './pythia.css'
+import { useColumnResize } from '../workbench/ColumnResizer.jsx'
 
 /*
   The Workbench's EV-charger mode — grid-yukti's playground, in the Workbench's layout.
@@ -56,6 +57,7 @@ const VERDICT_PAINT = 'verdicts'
 
 export default function PythiaWorkbench({ entry, onExit, onOpenModel, shared }) {
   const { TopBar, Assistant, ReportView, Toggle, NeedsAttention } = shared
+  const cols = useColumnResize()
   const [mode, setMode] = useState(entry?.kind === 'library' ? 'library' : entry?.kind === 'feeder' ? 'feeder' : 'build')
 
   const [health, setHealth] = useState(null)
@@ -523,12 +525,13 @@ export default function PythiaWorkbench({ entry, onExit, onOpenModel, shared }) 
                 { label: 'The start screen', about: 'Back to the list of examples and feeders', run: onExit },
               ]} />
 
-      <div className="wb-cols">
+      <div className="wb-cols" ref={cols.ref} style={cols.style}>
         <Assistant messages={live} busy={busy} studies={studies} online={routerUp}
                    onAsk={ask} onFollowUp={() => {}} onOpenReport={() => { setTab('report'); setUnread(false) }}
                    onAttach={onOpenModel} attachLabel="Open model" placeholder="Ask about EV charger siting…" />
 
         <section className="wb-stage">
+          {cols.handles}
           <div className="wb-panehead wb-stagehead">
             <div role="tablist" className="wb-tabs">
               <button role="tab" aria-selected={tab === 'diagram'} className={tab === 'diagram' ? 'on' : ''}
