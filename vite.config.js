@@ -38,6 +38,15 @@ export default defineConfig({
     fs: { allow: [here, DOCS] },
     strictPort: true,
     proxy: {
+      // Pythia (EV charger screening) is its own server on :8001 — it runs in
+      // .venv/Pythia, which the main API's environment cannot share. Listed
+      // FIRST so it wins over the general `/api` rule; the prefix is stripped,
+      // so the server sees its own `/v1/...` paths.
+      '/api/pythia': {
+        target: process.env.PYTHIA_API || 'http://127.0.0.1:8001',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/api\/pythia/, ''),
+      },
       '/api': { target: 'http://127.0.0.1:8000', changeOrigin: true },
     },
   },

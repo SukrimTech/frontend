@@ -1,0 +1,189 @@
+/*
+ * Pythia in the Workbench — the EV-charger mode's own pieces, in the Workbench's language.
+ *
+ * Same three colours as workbench.css (ink, paper, mint) and the same two typefaces. The
+ * three verdicts are told apart by SHAPE first, as grid-yukti drew them — circle feasible,
+ * square infeasible, diamond inconclusive — so they survive a projector, a satellite basemap
+ * and a red-green deficiency, and the third verdict gets equal weight:
+ *
+ *     feasible       mint circle, ink edge
+ *     infeasible     ink square
+ *     inconclusive   paper diamond, heavy ink edge
+ *
+ * Everything is scoped under `.wb`, like the rest of the Workbench.
+ */
+
+.wb.py { --bus: 8px; }
+
+/* --- the map ---------------------------------------------------------- */
+
+.wb .py-map { position: relative; width: 100%; height: 100%; }
+.wb .py-map-canvas { position: absolute; inset: 0; background: #f4f4f2; }
+.wb .py-map-canvas:focus { outline: none; }
+.wb .leaflet-container { font-family: var(--mono); font-size: 11px; }
+.wb .leaflet-control-zoom a { color: var(--ink); }
+.wb .leaflet-bar { border: 1px solid var(--ink) !important; border-radius: 10px !important; overflow: hidden; box-shadow: none !important; }
+.wb .leaflet-top.leaflet-left { top: 6px; left: 6px; }
+.wb .py-tilestate, .wb .py-maphint {
+  position: absolute; z-index: 500; left: 50%; transform: translateX(-50%);
+  padding: 6px 12px; background: var(--paper); border: 1px solid var(--ink); border-radius: 999px;
+  font-size: 12px; white-space: nowrap; max-width: calc(100% - 32px); overflow: hidden; text-overflow: ellipsis;
+}
+.wb .py-tilestate { top: 14px; }
+.wb .py-maphint { bottom: 14px; }
+
+.wb .py-edge { stroke: var(--ink); stroke-opacity: .75; stroke-linecap: round; }
+.wb [data-basemap-dark='yes'] .py-edge { stroke: #fff; stroke-opacity: .9; }
+
+.wb .py-pin i {
+  display: block; width: 18px; height: 18px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg);
+  background: var(--ink); border: 2px solid var(--paper); box-shadow: 0 2px 6px rgba(17, 17, 17, .35);
+}
+
+/* A bus is a zero-sized point; its shape is drawn around it, sized by --bus from the zoom. */
+.wb .py-bus { width: 0 !important; height: 0 !important; overflow: visible; background: none; border: 0; }
+.wb .py-bus i {
+  position: absolute; left: calc(var(--bus) / -2); top: calc(var(--bus) / -2);
+  width: var(--bus); height: var(--bus); border-radius: 50%;
+  background: var(--paper); border: 1.5px solid var(--ink); box-shadow: 0 0 0 1.5px rgba(255, 255, 255, .85);
+}
+.wb .py-bus.none i { width: calc(var(--bus) * .55); height: calc(var(--bus) * .55);
+  left: calc(var(--bus) * -.275); top: calc(var(--bus) * -.275); background: var(--ink); border-color: var(--ink); }
+.wb .py-bus.slack i { border-radius: 2px; background: var(--ink); width: calc(var(--bus) * 1.6); height: calc(var(--bus) * 1.6);
+  left: calc(var(--bus) * -.8); top: calc(var(--bus) * -.8); }
+.wb .py-bus.slack b, .wb .py-bus b.ev {
+  position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--bus) / 2 + 4px);
+  font: 600 9px/1 var(--mono); padding: 2px 4px; border-radius: 3px; background: var(--ink); color: var(--paper);
+  white-space: nowrap; pointer-events: none;
+}
+.wb .py-bus.feasible i { background: var(--mint); }
+.wb .py-bus.infeasible i { border-radius: 1px; background: var(--ink); }
+.wb .py-bus.inconclusive i { border-radius: 1px; transform: rotate(45deg); background: var(--paper); border-width: 2.5px; }
+.wb .py-bus.on i { outline: 2px solid var(--ink); outline-offset: 3px; }
+.wb .py-bus.on b.ev { background: var(--mint); color: var(--ink); border: 1px solid var(--ink); }
+.wb .py-bus.ringonly i { outline-width: 1.5px; outline-offset: 2px; }
+.wb .py-bus.sel i { box-shadow: 0 0 0 4px var(--mint), 0 0 0 5.5px var(--ink); }
+.wb [data-bus] { cursor: pointer; }
+.wb .leaflet-tooltip { font-family: var(--mono); font-size: 11px; border: 1px solid var(--ink); border-radius: 6px; box-shadow: none; }
+
+/* --- the network drawing (library feeders) ---------------------------- */
+
+.wb .py-graph { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; }
+.wb .py-netgraph { width: 100%; height: 100%; max-height: 100%; }
+.wb .py-ng-edge { stroke: var(--ink); stroke-opacity: .55; stroke-width: 1.2; }
+.wb .py-ng-bus circle, .wb .py-ng-bus rect { fill: var(--paper); stroke: var(--ink); stroke-width: 1.3; }
+.wb .py-ng-bus.junction circle { fill: var(--ink); }
+.wb .py-ng-bus.v-feasible circle { fill: var(--mint); }
+.wb .py-ng-bus.v-infeasible rect { fill: var(--ink); }
+.wb .py-ng-bus.v-inconclusive rect { fill: var(--paper); stroke-width: 2.2; }
+.wb .py-ng-bus .py-ng-ring { fill: none !important; stroke: var(--ink); stroke-width: 1.6; }
+.wb .py-ng-bus .py-ng-hit { fill: transparent !important; stroke: none !important; }
+.wb .py-ng-bus.clickable { cursor: pointer; }
+.wb .py-ng-bus.sel > circle:not(.py-ng-hit):not(.py-ng-ring), .wb .py-ng-bus.sel > rect { stroke-width: 3; }
+.wb .py-ng-bad { fill: none !important; stroke: var(--ink) !important; stroke-dasharray: 2 2; }
+.wb .py-ng-slack rect { fill: var(--ink); }
+.wb .py-ng-slack text { font: 600 9px var(--mono); fill: var(--ink); }
+
+/* --- legend swatches --------------------------------------------------- */
+
+.wb .py-lg { display: inline-block; width: 11px; height: 11px; flex: none; border: 1.5px solid var(--ink); background: var(--paper); border-radius: 50%; }
+.wb .py-lg.sub { border-radius: 2px; background: var(--ink); }
+.wb .py-lg.junction { width: 7px; height: 7px; background: var(--ink); margin: 0 2px; }
+.wb .py-lg.picked { outline: 2px solid var(--ink); outline-offset: 2px; }
+.wb .py-lg.feasible { background: var(--mint); }
+.wb .py-lg.infeasible { border-radius: 1px; background: var(--ink); }
+.wb .py-lg.inconclusive { border-radius: 1px; transform: rotate(45deg); width: 9px; height: 9px; margin: 0 1px; border-width: 2px; }
+
+/* --- verdicts as words ------------------------------------------------- */
+
+.wb .py-pill {
+  display: inline-flex; align-items: center; font-family: var(--mono); font-size: 10.5px; padding: 1px 7px;
+  border-radius: 999px; border: 1px solid var(--ink); background: var(--paper); white-space: nowrap;
+}
+.wb .py-pill.feasible { background: var(--mint); }
+.wb .py-pill.infeasible { background: var(--ink); color: var(--paper); }
+.wb .py-pill.inconclusive { border-style: dashed; border-width: 1.5px; }
+.wb .py-pill.solved { background: var(--ink); color: var(--mint); }
+
+.wb .py-strip { display: flex; height: 10px; border: 1px solid var(--ink); border-radius: 3px; overflow: hidden; }
+.wb .py-strip i { display: block; height: 100%; }
+.wb .py-strip i.feasible { background: var(--mint); }
+.wb .py-strip i.infeasible { background: var(--ink); }
+.wb .py-strip i.inconclusive {
+  background: repeating-linear-gradient(45deg, var(--paper) 0 3px, rgba(17, 17, 17, .45) 3px 4px);
+}
+.wb .py-mix { display: flex; flex-direction: column; gap: 8px; }
+
+/* --- side panel -------------------------------------------------------- */
+
+.wb .py-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.wb .py-track { position: relative; height: 22px; display: flex; align-items: center; }
+.wb .py-track input[type=range] { width: 100%; position: relative; z-index: 1; accent-color: var(--ink); background: transparent; }
+.wb .py-span { position: absolute; top: 7px; height: 8px; background: var(--mint); border: 1px solid var(--ink); border-radius: 3px; }
+.wb .py-track-ends { display: flex; justify-content: space-between; font-size: 11px; margin-top: -6px; }
+.wb .py-picklist { display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow-y: auto; }
+.wb .py-pickrow { display: flex; align-items: stretch; gap: 6px; border: 1px solid var(--rule-mid); border-radius: 8px; }
+.wb .py-pickrow.coloured { border-color: var(--ink); background: rgba(198, 235, 197, .45); }
+.wb .py-ck { flex: none; width: 30px; border: 0; border-right: 1px solid var(--rule-mid); background: none; position: relative; }
+.wb .py-ck::after { content: ''; position: absolute; inset: 50% auto auto 50%; width: 12px; height: 12px; transform: translate(-50%, -50%);
+  border: 1.5px solid var(--ink); border-radius: 3px; background: var(--paper); }
+.wb .py-ck.on::after { background: var(--ink); box-shadow: inset 0 0 0 2px var(--paper); }
+.wb .py-pick-main { flex: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 7px 8px 7px 2px; border: 0; background: none; text-align: left; font-size: 13px; min-width: 0; }
+.wb .py-pick-main .wb-mono { font-size: 11px; }
+.wb .py-place { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px dashed var(--ink); border-radius: 10px; }
+.wb .py-sep { display: flex; flex-direction: column; gap: 6px; }
+.wb .py-sep table { font-size: 12px; }
+.wb .py-sep td, .wb .py-sep th { padding: 5px 7px; }
+.wb .py-sep tr.py-this td { background: rgba(198, 235, 197, .5); }
+.wb .py-mode { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border: 1px solid var(--rule-mid); border-radius: 8px; background: var(--paper); text-align: left; }
+.wb .py-mode.on { border-color: var(--ink); background: var(--mint); }
+.wb .py-mode b { font-size: 13px; }
+.wb .py-mode span { font-size: 11.5px; line-height: 1.4; }
+.wb .py-feeder-open { flex: 1; display: flex; flex-direction: column; gap: 2px; padding: 0; border: 0; background: none; text-align: left; min-width: 0; }
+.wb .py-feeder-open b { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wb .wb-edit.py-current { border-color: var(--ink); background: rgba(198, 235, 197, .45); }
+.wb .wb-edit { flex-wrap: wrap; }
+.wb .py-confirm { flex-basis: 100%; display: flex; flex-direction: column; gap: 6px; padding-top: 6px; }
+
+/* --- chat pieces ------------------------------------------------------- */
+
+.wb .py-job { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--ink); border-radius: 10px; }
+.wb .py-job-head { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
+.wb .py-phase { display: grid; grid-template-columns: 18px 1fr auto; gap: 8px; align-items: baseline; font-size: 13px; }
+.wb .py-phase-mark { font-family: var(--mono); font-size: 12px; text-align: center; }
+.wb .py-phase.running .py-phase-mark::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ink); animation: wbdot 1.2s infinite; }
+.wb .py-phase.queued { opacity: .5; }
+.wb .py-cands { display: flex; flex-direction: column; gap: 6px; }
+.wb .py-cand { display: flex; flex-direction: column; gap: 4px; padding: 9px 11px; border: 1px solid var(--rule-mid); border-radius: 10px; background: var(--paper); text-align: left; }
+.wb .py-cand.on { border-color: var(--ink); background: var(--mint); }
+.wb .py-cand-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.wb .py-cand-head b { font-size: 13px; }
+.wb a.py-link { display: inline-flex; align-items: center; }
+.wb .py-err { overflow-wrap: anywhere; display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px solid var(--ink); border-left-width: 4px; border-radius: 10px; }
+.wb .py-err-head { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
+.wb .py-kv { margin: 0; display: flex; flex-direction: column; gap: 3px; font-size: 12px; }
+.wb .py-kv > div { display: grid; grid-template-columns: minmax(80px, auto) 1fr; gap: 8px; }
+.wb .py-kv dd { margin: 0; overflow-wrap: anywhere; }
+
+/* --- report documents -------------------------------------------------- */
+
+.wb .py-doc { display: flex; flex-direction: column; gap: 14px; font-size: 14px; line-height: 1.55; }
+.wb .py-doc h3 { margin: 10px 0 -4px; font-size: 15px; font-weight: 600; }
+.wb .py-doc blockquote { margin: 0; padding: 8px 12px; border-left: 3px solid var(--ink); background: rgba(198, 235, 197, .35); font-size: 13px; }
+.wb .py-figure { margin: 0; display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px solid var(--ink); border-radius: 10px; }
+.wb .py-figure figcaption { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; font-size: 13px; }
+.wb .py-figure figcaption span { font-size: 12px; opacity: .75; }
+.wb .py-chart { width: 100%; height: auto; font-family: var(--mono); }
+.wb .py-axis text { font-size: 9.5px; fill: var(--ink); }
+.wb .py-axis .lab { font-size: 10.5px; }
+.wb .py-axis .grid { stroke: rgba(17, 17, 17, .1); }
+.wb .py-axis .rule { stroke: var(--ink); }
+.wb .py-bar { fill: var(--ink); }
+.wb .py-diag { stroke: var(--ink); stroke-dasharray: 4 3; stroke-opacity: .6; }
+.wb .py-vmin line { stroke: var(--ink); stroke-width: 1; stroke-dasharray: 1 2; }
+.wb .py-pt { stroke: var(--ink); stroke-width: .7; fill: var(--paper); }
+.wb .py-pt.feasible { fill: var(--mint); }
+.wb .py-pt.infeasible { fill: var(--ink); }
+.wb .py-confusion td { text-align: center; }
+.wb .py-confusion td.diag { background: rgba(198, 235, 197, .55); }
+.wb .py-confusion td.bad { background: var(--ink); color: var(--paper); font-weight: 700; }

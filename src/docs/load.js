@@ -26,6 +26,7 @@ export const NAV = [
       ['agents/themis', 'Themis — economic dispatch'],
       ['agents/ananke', 'Ananke — DC power flow and LOPF'],
       ['agents/iris', 'Iris — the diagram'],
+      ['agents/pythia', 'Pythia — EV charger siting'],
       ['agents/hermes', 'Hermes — routing'],
     ],
   },

@@ -11,6 +11,8 @@ import { composeAnswer, followUps } from '../chat/answer.js'
 import Diagram from '../diagram/Diagram.jsx'
 import { overlayFrom } from '../diagram/overlays.js'
 import { RAMPS } from '../diagram/tokens.js'
+import PythiaWorkbench from '../pythia/PythiaWorkbench.jsx'
+import { api as pythiaApi } from '../pythia/api.js'
 import '../workbench/workbench.css'
 
 /*
@@ -28,6 +30,12 @@ import '../workbench/workbench.css'
   **An agent's question becomes a chat message.** The harnesses stop at
   ASK_USER with a list of things they will not assume; the answer goes back
   through the same run call rather than through a separate form.
+
+  **EV charger screening is a second mode of the same frame.** Pythia does not
+  open a network model: it screens feeders from its own library, or one traced
+  from the road network around a map pin, through its own server. So it gets
+  the same layout with its own contents (`pythia/PythiaWorkbench.jsx`), and the
+  pieces below are handed to it rather than copied.
 */
 
 /*
@@ -111,6 +119,10 @@ export default function Workbench() {
   const [unread, setUnread] = useState(false)
   const [display, setDisplay] = useState({ names: true, values: true, loadings: true })
   const [startError, setStartError] = useState(null)
+  // EV charger screening: which way the start screen opened it, or null for the
+  // model workbench. The Pythia server's feeders are listed on the start screen.
+  const [pythia, setPythia] = useState(null)
+  const [pythiaFeeders, setPythiaFeeders] = useState(undefined)
 
   const filePick = useRef(null)
   const dirPick = useRef(null)
@@ -123,6 +135,12 @@ export default function Workbench() {
     getExamples().then((d) => setExamples(d.examples)).catch(() => {})
     getHealth().then(setHealth).catch(() => {})
   }, [])
+
+  // null means the Pythia server did not answer, which the start screen says.
+  useEffect(() => {
+    if (session || pythia) return
+    pythiaApi.feeders().then((d) => setPythiaFeeders(d.feeders || []), () => setPythiaFeeders(null))
+  }, [session, pythia])
 
   const absorb = useCallback((state) => {
     if (state.session) setSession(state.session)
@@ -273,6 +291,17 @@ export default function Workbench() {
       }
       if (found.length || firstPaint) setStudyFindings(found)
       if (docs.length) { setReports(docs); setUnread(tab !== 'report') }
+      if (ran.some((s) => s.result?.data?.handoff === 'pythia')) {
+        say('assistant', 'EV charger siting runs on its own feeders — from its library, or traced '
+          + 'from a map pin — not on the model open here.', {
+          node: (
+            <div className="wb-row">
+              <button className="wb-btn wb-btn-dark wb-btn-sm" onClick={() => setPythia({ kind: 'build' })}>
+                Open EV charger screening</button>
+            </div>
+          ),
+        })
+      }
     } catch (e) { say('error', e.message) } finally { setBusy(false) }
   }
 
@@ -316,6 +345,14 @@ export default function Workbench() {
     </>
   )
 
+  if (pythia) {
+    return (
+      <PythiaWorkbench key={JSON.stringify(pythia)} entry={pythia} shared={SHARED}
+                       onExit={() => setPythia(null)}
+                       onOpenModel={() => { setPythia(null); setSession(null) }} />
+    )
+  }
+
   if (!session) {
     return (
       <div className="wb">
@@ -323,7 +360,8 @@ export default function Workbench() {
         <StartScreen examples={examples} busy={busy} error={startError}
                      onDismiss={() => setStartError(null)} onStart={start}
                      onFiles={upload} onPickFiles={() => filePick.current?.click()}
-                     onPickFolder={() => dirPick.current?.click()} />
+                     onPickFolder={() => dirPick.current?.click()}
+                     pythiaFeeders={pythiaFeeders} onPythia={setPythia} />
       </div>
     )
   }
@@ -342,7 +380,8 @@ export default function Workbench() {
               onReset={async () => absorb(await resetSession(session.id))}
               onFiles={() => filePick.current?.click()}
               onFolder={() => dirPick.current?.click()}
-              onExamples={() => { setSession(null); setMessages([]); clearResults() }} />
+              onExamples={() => { setSession(null); setMessages([]); clearResults() }}
+              onPythia={() => setPythia({ kind: 'build' })} />
 
       <div className="wb-cols">
         <Assistant messages={messages} busy={busy} studies={studies}
@@ -430,7 +469,8 @@ export default function Workbench() {
 /* ------------------------------------------------------------------ */
 /* top bar                                                             */
 
-function TopBar({ title, ext, edits, busy, onUndo, onReset, onFiles, onFolder, onExamples }) {
+function TopBar({ title, ext, edits, busy, onUndo, onReset, onFiles, onFolder, onExamples,
+                  onPythia, badge, editing = true, menu: items }) {
   const [menu, setMenu] = useState(false)
   const ref = useRef(null)
   useEffect(() => {
@@ -451,18 +491,32 @@ function TopBar({ title, ext, edits, busy, onUndo, onReset, onFiles, onFolder, o
         <span className="wb-title-name">{title}</span>
         {ext && <span className="wb-mono wb-title-ext">{ext}</span>}
         <span className={`wb-badge wb-mono${edits ? ' on' : ''}`}>
-          {edits ? `${plural(edits, 'unsaved change')}` : 'unchanged'}
+          {badge ?? (edits ? `${plural(edits, 'unsaved change')}` : 'unchanged')}
         </span>
       </div>
       <div className="wb-top-actions" ref={ref}>
-        <button className="wb-btn" disabled={!edits || busy} onClick={onUndo}
-                title="Undo the last change">Undo</button>
-        <button className="wb-btn" disabled={!edits || busy} onClick={onReset}
-                title="Put the model back as imported">Reset</button>
+        {editing && (
+          <>
+            <button className="wb-btn" disabled={!edits || busy} onClick={onUndo}
+                    title="Undo the last change">Undo</button>
+            <button className="wb-btn" disabled={!edits || busy} onClick={onReset}
+                    title="Put the model back as imported">Reset</button>
+          </>
+        )}
         <button className="wb-btn wb-btn-dark" disabled={busy} aria-expanded={menu}
                 onClick={() => setMenu(!menu)}
-                title="Open another model — a file or a folder">Open model</button>
-        {menu && (
+                title={items ? 'Open something else' : 'Open another model — a file or a folder'}>
+          {items ? 'Open…' : 'Open model'}</button>
+        {menu && items && (
+          <div className="wb-menu">
+            {items.map((it) => (
+              <button key={it.label} onClick={() => { setMenu(false); it.run() }}>
+                <b>{it.label}</b><span>{it.about}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {menu && !items && (
           <div className="wb-menu">
             <button onClick={() => { setMenu(false); onFiles() }}>
               <b>Files…</b><span>A MATPOWER .m, PSS/E .raw, or single .dss</span>
@@ -473,6 +527,11 @@ function TopBar({ title, ext, edits, busy, onUndo, onReset, onFiles, onFolder, o
             <button onClick={() => { setMenu(false); onExamples() }}>
               <b>An example</b><span>Back to the list of test networks</span>
             </button>
+            {onPythia && (
+              <button onClick={() => { setMenu(false); onPythia() }}>
+                <b>EV charger screening</b><span>Pythia’s feeders: its library, or one traced from a map pin</span>
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -484,7 +543,7 @@ function TopBar({ title, ext, edits, busy, onUndo, onReset, onFiles, onFolder, o
 /* start screen                                                        */
 
 function StartScreen({ examples, busy, error, onDismiss, onStart, onFiles,
-                       onPickFiles, onPickFolder }) {
+                       onPickFiles, onPickFolder, pythiaFeeders, onPythia }) {
   const [over, setOver] = useState(false)
   return (
     <div className="wb-start">
@@ -535,6 +594,33 @@ function StartScreen({ examples, busy, error, onDismiss, onStart, onFiles,
             </button>
           ))}
         </div>
+
+        {/* EV charger screening (Pythia) works on its own feeders, not on a model,
+            so it is its own way in: a traced feeder, a new one, or the library. */}
+        <span className="wb-eyebrow">Or screen EV charger sites</span>
+        {pythiaFeeders === null && (
+          <p className="wb-small">The Pythia server is not answering — start it with
+            <code> .venv/Pythia/bin/python -m backend.Pythia.routes</code> (port 8001).</p>
+        )}
+        <div className="wb-examples">
+          <button disabled={busy} onClick={() => onPythia({ kind: 'build' })}>
+            <span className="wb-ex-name">A feeder from a map pin</span>
+            <span className="wb-mono wb-ex-fmt">OpenStreetMap</span>
+            <span className="wb-ex-about">Trace the road network around a point into a radial feeder, then screen EV charger placements on it.</span>
+          </button>
+          <button disabled={busy} onClick={() => onPythia({ kind: 'library' })}>
+            <span className="wb-ex-name">A library feeder</span>
+            <span className="wb-mono wb-ex-fmt">leave-one-out</span>
+            <span className="wb-ex-about">Where the truth is already known: screen a solved test network and score it against its own labels.</span>
+          </button>
+          {(pythiaFeeders || []).map((f) => (
+            <button key={f.feeder_id} disabled={busy} onClick={() => onPythia({ kind: 'feeder', fid: f.feeder_id })}>
+              <span className="wb-ex-name">{f.label}</span>
+              <span className="wb-mono wb-ex-fmt">{f.n_bus} buses · {f.n_placements} placements</span>
+              <span className="wb-ex-about">Already built on this server — opening it costs nothing.</span>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   )
@@ -543,7 +629,8 @@ function StartScreen({ examples, busy, error, onDismiss, onStart, onFiles,
 /* ------------------------------------------------------------------ */
 /* assistant                                                           */
 
-function Assistant({ messages, busy, studies, online, onAsk, onFollowUp, onOpenReport, onAttach }) {
+function Assistant({ messages, busy, studies, online, onAsk, onFollowUp, onOpenReport, onAttach,
+                    attachLabel = 'Attach model', placeholder = 'Ask about this network…' }) {
   const [draft, setDraft] = useState('')
   const [studiesOpen, setStudiesOpen] = useState(false)
   const feed = useRef(null)
@@ -596,7 +683,7 @@ function Assistant({ messages, busy, studies, online, onAsk, onFollowUp, onOpenR
         )}
         <div className="wb-compose-box">
           <textarea rows={2} value={draft}
-                    placeholder={online ? 'Ask about this network…'
+                    placeholder={online ? placeholder
                       : 'No language model running — choose from Studies'}
                     onChange={(e) => setDraft(e.target.value)}
                     onKeyDown={(e) => {
@@ -610,7 +697,7 @@ function Assistant({ messages, busy, studies, online, onAsk, onFollowUp, onOpenR
             </button>
             <button className="wb-chipbtn" disabled={busy} onClick={onAttach}
                     title="Open another model — a file, or Shift-click for a folder">
-              Attach model
+              {attachLabel}
             </button>
             <button className="wb-send" disabled={busy || !draft.trim()} onClick={send}
                     aria-label="Send">Send</button>
@@ -670,12 +757,20 @@ function Message({ m, studies, onAsk, onFollowUp, onOpenReport }) {
 
       {m.table && <FollowTable t={m.table} />}
 
+      {m.node}
+
       {r && !r.ok && !m.answer && (
         <p className="wb-small"><b>The study stopped before it could answer.</b> It will
           not return a number it cannot stand behind, so nothing was guessed.</p>
       )}
 
       {r && <Flags findings={r.findings ?? []} />}
+
+      {!r && m.report && (
+        <div className="wb-row">
+          <button className="wb-btn wb-btn-dark wb-btn-sm" onClick={onOpenReport}>Open report</button>
+        </div>
+      )}
 
       {r && (m.report || (r.agent === 'ariadne' && !crossChecked(r))) && (
         <div className="wb-row">
@@ -969,11 +1064,14 @@ function ReportView({ docs, title }) {
           ))}
         </div>
       )}
-      <div className="wb-md wb-report-md">
-        <ReactMarkdown remarkPlugins={[remarkGfm]} components={REPORT_COMPONENTS}>
-          {shown.markdown}
-        </ReactMarkdown>
-      </div>
+      {shown.node}
+      {shown.markdown && (
+        <div className="wb-md wb-report-md">
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={REPORT_COMPONENTS}>
+            {shown.markdown}
+          </ReactMarkdown>
+        </div>
+      )}
     </article>
   )
 }
@@ -1351,3 +1449,9 @@ async function filesFromDrop(dt) {
   for (const entry of entries) await walk(entry, '')
   return out
 }
+
+/*
+  The pieces the EV-charger mode lays out in this same frame. Handed over as a
+  prop rather than imported there, so the two files do not import each other.
+*/
+const SHARED = { TopBar, Assistant, ReportView, Toggle, NeedsAttention }
