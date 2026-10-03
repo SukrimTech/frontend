@@ -427,7 +427,16 @@ export default function PythiaWorkbench({ entry, onExit, onOpenModel, shared }) 
         setBusy(false)
         const step = mode === 'library' ? STUDIES.library : mode === 'build' ? STUDIES.build : STUDIES.screen
         say('assistant', `That is an EV-siting question — running **${step.label.toLowerCase()}**. `
-          + 'The other steps are under Studies.')
+          + 'The other steps are under Studies.'
+          + (step === STUDIES.screen
+            ? '\n\nWhat this screens is the **placements stored on this feeder**, not a figure '
+              + 'from your sentence. Pythia does not take a power in kW or MW: every station is '
+              + 'sized by the library’s own rule (about half of its bus’s existing load, snapped '
+              + 'to the charger menu), because that is what its training data covers. To ask '
+              + 'about particular buses, use **Place stations…** in the side panel to put '
+              + 'stations on them, then screen again. For an arbitrary load such as "10 MW at bus '
+              + '10", open the network model and ask for a power flow instead.'
+            : ''))
         return DO[step.agent]()
       }
       if (r.agent) {
