@@ -47,7 +47,9 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/api\/pythia/, ''),
       },
-      '/api': { target: 'http://127.0.0.1:8000', changeOrigin: true },
+      // MAIN_API: set by deploy/ecosystem.config.cjs from MAIN_API_PORT, for a machine
+      // where :8000 is already taken.
+      '/api': { target: process.env.MAIN_API || 'http://127.0.0.1:8000', changeOrigin: true },
     },
   },
 })
