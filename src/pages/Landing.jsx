@@ -42,10 +42,13 @@ function Word({ children, style }) {
   )
 }
 
-/** A product / commercial row. Identical markup for both lists, by design. */
+/** A product / commercial row. Identical markup for both lists, by design; a row with a page
+ *  of its own (`to`) is a router link, which renders the same <a>. */
 function Row({ item }) {
+  const Tag = item.to ? Link : 'a'
+  const target = item.to ? { to: item.to } : { href: '#' }
   return (
-    <a href="#" className="sk-row" data-pv={item.art} data-hover="1" style={s(ROW)}
+    <Tag {...target} className="sk-row" data-pv={item.art} data-hover="1" style={s(ROW)}
        style-hover="background:#C6EBC5;padding-left:28px">
       <span style={s(`${MONO};font-size:13px`)}>{item.n}</span>
       <span style={s('display:flex;flex-direction:column;gap:8px')}>
@@ -63,7 +66,7 @@ function Row({ item }) {
       <span className="sk-row-arrow" style={s(`width:44px;height:44px;border-radius:50%;border:1px solid #111111;display:flex;align-items:center;justify-content:center;${MONO}`)}>
         →
       </span>
-    </a>
+    </Tag>
   )
 }
 
@@ -426,7 +429,7 @@ export default function Landing() {
               <span style={s(`${MONO};font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:#C6EBC5;margin-bottom:6px`)}>Products</span>
               <a href="#products" data-hover="1" style={s('color:#FFFFFF')} style-hover="text-decoration:underline">Loss estimation</a>
               <a href="#products" data-hover="1" style={s('color:#FFFFFF')} style-hover="text-decoration:underline">DERMS</a>
-              <a href="#products" data-hover="1" style={s('color:#FFFFFF')} style-hover="text-decoration:underline">Load forecasting</a>
+              <Link to="/forecast" data-hover="1" style={s('color:#FFFFFF')} style-hover="text-decoration:underline">Load forecasting</Link>
             </div>
             <div style={s('display:flex;flex-direction:column;gap:10px;font-size:15px')}>
               <span style={s(`${MONO};font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:#C6EBC5;margin-bottom:6px`)}>Read</span>

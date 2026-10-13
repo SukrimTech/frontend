@@ -3,6 +3,7 @@ import { Link, NavLink, Navigate, Route, Routes, useLocation } from 'react-route
 import Landing from './pages/Landing.jsx'
 import Docs from './pages/Docs.jsx'
 import Workbench from './pages/Workbench.jsx'
+import Forecast from './pages/Forecast.jsx'
 
 const THEME_KEY = 'sukrim-theme'
 // Renaming the product renamed this key. Reading the old one first means an
@@ -47,8 +48,9 @@ export default function App() {
         <div className="page nav-inner">
           <Link to="/" className="brand">Sukrim<span className="brand-dot">.</span></Link>
           <nav className="nav-links">
-            <NavLink to="/" end>Overview</NavLink>
+            <NavLink to="/" end className="nav-home">Overview</NavLink>
             <NavLink to="/workbench">Workbench</NavLink>
+            <NavLink to="/forecast">Load forecast</NavLink>
             <NavLink to="/docs">Docs</NavLink>
             <button className="icon-btn" onClick={toggle}
                     aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}>
@@ -62,6 +64,7 @@ export default function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/docs/*" element={<Docs />} />
           <Route path="/workbench" element={<Workbench />} />
+          <Route path="/forecast" element={<Forecast />} />
           {/* /console was removed; a stale link lands on the overview
               rather than a blank page with a working nav above it. */}
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -28,6 +28,7 @@ export const PRODUCTS = [
     art: 'assets/art-p3.svg',
     title: 'Short-Term Load Forecasting',
     tag: 'Forecasting',
+    to: '/forecast', // the live page (Apollo); the other rows have no page yet
     body: 'Hours-to-days demand per feeder and substation, with every assumption behind the curve written down beside it.',
   },
   {

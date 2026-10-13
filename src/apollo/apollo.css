@@ -1,0 +1,278 @@
+/*
+ * The Load forecast page (Apollo), in the app's own language: the warm ground and ink of
+ * styles.css, figures in JetBrains Mono, and the brand's mint for what is selected or
+ * certified (the chosen country, "Built with PriorLabs-TabPFN").
+ *
+ * The data has three colours and no more: the published load in ink (it is the fact the others
+ * are measured against), Apollo's forecast in blue with its band as a wash of that same blue,
+ * and the operator's forecast in orange, dashed. Blue/orange is the first validated pair of the
+ * categorical palette and passes the colour-vision checks in both themes (dataviz validator:
+ * protan ΔE 24.7 light, 26.8 dark). Status colours (good / error) are only used for status, and
+ * always with a ✓ / ✕ beside them.
+ *
+ * Everything is scoped under `.ap`.
+ */
+
+.ap {
+  --ap-fc: #2a78d6;
+  --ap-op: #eb6834;
+  --ap-actual: var(--ink);
+  --ap-band-outer: rgba(42, 120, 214, .14);
+  --ap-band-inner: rgba(42, 120, 214, .26);
+  --ap-mint: #C6EBC5;
+  --ap-mint-wash: rgba(198, 235, 197, .45);
+  --ap-mint-ink: #111111;
+  padding-bottom: 64px;
+}
+:root[data-theme='dark'] .ap {
+  color-scheme: dark;              /* scrollbars and form controls follow the theme */
+  --ap-fc: #3987e5;
+  --ap-op: #d95926;
+  --ap-band-outer: rgba(57, 135, 229, .17);
+  --ap-band-inner: rgba(57, 135, 229, .32);
+  --ap-mint-wash: rgba(198, 235, 197, .10);
+}
+
+/* styles.css pads every <section> for the docs; a card is not a docs section. */
+.ap section { padding: 0; }
+.ap .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ap .mono, .ap .num { font-family: var(--mono); font-variant-ligatures: none; }
+.ap .eyebrow { margin-bottom: 8px; }
+
+/* --- hero --------------------------------------------------------------------------- */
+
+.ap-hero { padding: clamp(36px, 6vw, 72px) 0 28px; }
+.ap-hero h1 { font-size: clamp(1.9rem, 4.4vw, 3.1rem); max-width: 24ch; margin-bottom: 18px; }
+.ap-hero .lede { max-width: 70ch; font-size: clamp(1rem, 1.4vw, 1.12rem); }
+.ap-hero .stat-line { align-items: center; margin-top: 14px; }
+
+.ap-badge {
+  display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px;
+  background: var(--ap-mint); color: var(--ap-mint-ink); border: 1px solid #111111;
+  font-family: var(--mono); font-size: .72rem; letter-spacing: .02em; white-space: nowrap;
+}
+
+.ap-banner {
+  margin: 0 0 18px; padding: 12px 16px; border: 1px solid var(--rule-strong);
+  border-left: 4px solid var(--warning); border-radius: var(--radius); background: var(--raised);
+  font-size: .92rem; color: var(--ink-soft);
+}
+.ap-banner b { color: var(--ink); }
+.ap-banner.big { padding: 22px; font-size: 1rem; }
+
+/* --- cards and layout --------------------------------------------------------------- */
+
+.ap .ap-card {   /* `.ap` too: a card is a <section>, and `.ap section` above resets padding */
+  background: var(--raised); border: 1px solid var(--rule); border-radius: var(--radius);
+  padding: clamp(16px, 2.2vw, 24px); margin-bottom: 18px; min-width: 0;
+}
+.ap-card-head { display: flex; flex-wrap: wrap; gap: 12px 20px; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+.ap-card-head h2 { font-size: 1.16rem; letter-spacing: -.012em; }
+.ap-card-head .ap-small { margin: 6px 0 0; }
+.ap-grid2 { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); }
+.ap-grid2 > .ap-card, .ap-grid3 > .ap-card { margin-bottom: 0; }
+.ap-grid3 { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); margin-bottom: 18px; }
+.ap-grid2 { margin-bottom: 18px; }
+.ap-small { font-size: .82rem; color: var(--ink-soft); margin: 8px 0 0; line-height: 1.5; }
+.ap-empty { margin: 6px 0; padding: 16px; border: 1px dashed var(--rule-strong); border-radius: 8px; color: var(--ink-soft); font-size: .9rem; }
+.ap-fail { color: var(--error); font-size: .85rem; margin: 6px 0 0; overflow-wrap: anywhere; }
+.ap-tag {
+  margin-left: 6px; padding: 1px 5px; border-radius: 4px; border: 1px solid currentColor;
+  font-family: var(--mono); font-size: .62rem; letter-spacing: .06em; text-transform: uppercase; opacity: .75;
+}
+
+/* segmented control: one row of choices */
+.ap-seg { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 3px; border: 1px solid var(--rule); border-radius: 9px; background: var(--sunken); }
+.ap-seg button {
+  border: 0; background: none; color: var(--ink-soft); font: inherit; font-size: .82rem; font-weight: 500;
+  padding: 6px 10px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center;
+}
+.ap-seg button:hover { color: var(--ink); }
+.ap-seg button.on { background: var(--raised); color: var(--ink); box-shadow: 0 0 0 1px var(--rule-strong); }
+
+/* --- countries ---------------------------------------------------------------------- */
+
+.ap-countries { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); margin-bottom: 18px; }
+.ap-country {
+  display: flex; flex-direction: column; gap: 10px; text-align: left; cursor: pointer; font: inherit; color: var(--ink);
+  background: var(--raised); border: 1px solid var(--rule); border-radius: var(--radius); padding: 14px 16px;
+  transition: border-color .12s ease, background .12s ease;
+}
+.ap-country:hover { border-color: var(--rule-strong); }
+.ap-country.on { border-color: var(--ink); background: var(--ap-mint-wash); box-shadow: inset 0 3px 0 var(--ap-mint); }
+.ap-country-head { display: flex; justify-content: space-between; align-items: baseline; }
+.ap-country-head b { font-size: 1rem; }
+.ap-country-head .mono { font-size: .72rem; color: var(--ink-faint); }
+.ap-country-body { display: flex; flex-direction: column; gap: 8px; }
+.ap-country-figs { display: flex; gap: 22px; }
+.ap-country-figs b { white-space: nowrap; }
+.ap-country-figs > span { display: flex; flex-direction: column; gap: 1px; }
+.ap-country-figs em { font-style: normal; font-family: var(--mono); font-size: .64rem; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-faint); }
+.ap-country-figs b { font-size: 1.12rem; font-weight: 500; }
+.ap-country-figs small { font-size: .7rem; color: var(--ink-faint); font-family: var(--mono); }
+.ap-spark { display: block; width: 100%; }
+.ap-spark-now { stroke: var(--ink-faint); stroke-width: 1; }
+
+/* --- charts ------------------------------------------------------------------------- */
+
+.ap-chart-wrap { position: relative; width: 100%; margin-top: 8px; }
+.ap-chart { display: block; font-family: var(--mono); overflow: visible; }
+.ap-chart:focus { outline: none; }
+.ap-chart:focus-visible { outline: 2px solid var(--ap-fc); outline-offset: 2px; border-radius: 4px; }
+.ap-chart-empty { color: var(--ink-faint); font-size: .85rem; }
+.ap-axis text { font-size: 10px; fill: var(--ink-faint); }
+.ap-axis .unit { font-size: 9.5px; }
+.ap-axis .grid, .ap-axis .grid-x { stroke: var(--rule); stroke-width: 1; }
+.ap-axis .grid-x { stroke-opacity: .55; }
+.ap-axis .day { stroke: var(--rule-strong); stroke-width: 1; }
+.ap-axis .rule { stroke: var(--rule-strong); }
+
+.ap-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.ap-line.actual { stroke: var(--ap-actual); }
+.ap-line.fc { stroke: var(--ap-fc); }
+.ap-line.op { stroke: var(--ap-op); }
+.ap-line.dash { stroke-dasharray: 5 4; stroke-linecap: butt; }
+.ap-line.thin { stroke-width: 1.5; }
+.ap-line.actual.thin { stroke: var(--ink-faint); }
+.ap-band { stroke: none; }
+.ap-band.fc.outer { fill: var(--ap-band-outer); }
+.ap-band.fc.inner { fill: var(--ap-band-inner); }
+.ap-marker line { stroke: var(--ink-soft); stroke-width: 1; }
+.ap-marker text { font-size: 10px; fill: var(--ink-soft); }
+.ap-cross line { stroke: var(--ink-soft); stroke-width: 1; }
+.ap-dot { stroke: var(--raised); stroke-width: 2; }
+.ap-dot.actual { fill: var(--ap-actual); }
+.ap-dot.fc { fill: var(--ap-fc); }
+.ap-dot.op { fill: var(--ap-op); }
+
+.ap-tip {
+  position: absolute; top: 6px; z-index: 5; pointer-events: none; min-width: 190px;
+  background: var(--raised); border: 1px solid var(--rule-strong); border-radius: 8px; box-shadow: var(--shadow);
+  padding: 8px 10px; font-size: .78rem;
+}
+.ap-tip-time { font-family: var(--mono); font-size: .72rem; color: var(--ink-faint); margin-bottom: 4px; }
+.ap-tip-row { display: grid; grid-template-columns: 16px auto 1fr; gap: 6px; align-items: center; line-height: 1.5; }
+.ap-tip-row b { font-family: var(--mono); font-weight: 600; color: var(--ink); white-space: nowrap; }
+.ap-tip-row span { color: var(--ink-soft); font-size: .72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* keys: a short stroke for a line, a swatch for a band — the legend mirrors the mark */
+.ap-key { display: inline-block; width: 16px; height: 2px; border-radius: 1px; background: var(--ap-actual); vertical-align: middle; }
+.ap-key.fc { background: var(--ap-fc); }
+.ap-key.op { background: var(--ap-op); }
+.ap-key.dash.op { background: repeating-linear-gradient(90deg, var(--ap-op) 0 5px, transparent 5px 8px); }
+.ap-key.band { height: 10px; width: 14px; border-radius: 2px; }
+.ap-key.band.fc.outer { background: var(--ap-band-outer); }
+.ap-key.band.fc.inner { background: var(--ap-band-inner); }
+.ap-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0; padding: 0; list-style: none; font-size: .8rem; color: var(--ink-soft); }
+.ap-legend li { display: inline-flex; align-items: center; gap: 7px; }
+
+.ap-tableview { margin-top: 10px; font-size: .85rem; }
+.ap-tableview summary { cursor: pointer; color: var(--ink-soft); font-size: .82rem; }
+.ap-tableview .ap-scroll { max-height: 320px; overflow: auto; margin-top: 8px; }
+
+/* --- headline numbers --------------------------------------------------------------- */
+
+.ap-kpis { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr)); margin: 16px 0 0; }
+.ap-kpi { padding: 12px 14px; border: 1px solid var(--rule); border-radius: 8px; background: var(--ground); min-width: 0; }
+.ap-kpi dt { font-family: var(--mono); font-size: .66rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-faint); }
+.ap-kpi dd { margin: 4px 0 0; display: flex; flex-direction: column; gap: 2px; }
+.ap-kpi dd b { font-size: 1.28rem; font-weight: 500; letter-spacing: -.01em; }
+.ap-kpi dd small { font-size: .74rem; color: var(--ink-soft); overflow-wrap: anywhere; }
+
+/* --- tables ------------------------------------------------------------------------- */
+
+.ap-scroll { overflow-x: auto; border: 1px solid var(--rule); border-radius: 8px; margin-top: 10px; }
+.ap-scroll table { font-size: .82rem; }
+.ap-scroll th, .ap-scroll td { padding: 7px 12px; }
+.ap-scroll th { white-space: nowrap; }
+.ap-scroll th.n { text-align: right; }
+/* the row label stays put while a wide table scrolls sideways (phones) */
+.ap-matrix .ap-scroll th:first-child, .ap-matrix .ap-scroll td:first-child {
+  position: sticky; left: 0; z-index: 1; background: var(--raised); white-space: nowrap;
+}
+.ap-matrix .ap-scroll thead th:first-child { background: var(--sunken); z-index: 2; }
+.ap-scroll td.n { font-family: var(--mono); text-align: right; font-size: .8rem; font-variant-numeric: tabular-nums; }
+.ap-scroll td.best { font-weight: 700; color: var(--ink); }
+.ap-scroll td.muted { color: var(--ink-faint); }
+.ap-scroll tr.total td { border-top: 1px solid var(--rule-strong); font-weight: 500; }
+.ap-scroll caption { caption-side: top; text-align: left; padding: 8px 12px 0; font-size: .8rem; color: var(--ink-soft); }
+.ap-matrix .ap-seg { margin-bottom: 2px; }
+
+.ap-backtest { border-style: dashed; border-color: var(--rule-strong); }
+.ap-rule { margin-top: 14px; padding: 12px 14px; border-left: 3px solid var(--ap-mint); background: var(--ap-mint-wash); border-radius: 0 8px 8px 0; font-size: .9rem; }
+.ap-rule p { margin: 0; }
+.ap-rule .ap-small { margin-top: 6px; }
+.ap-cal { margin-top: 16px; }
+.ap-cal h3 { font-size: .95rem; }
+.ap-figure { margin: 0; }
+.ap-figure figcaption { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; margin-bottom: 8px; }
+.ap-figure figcaption b { font-size: .98rem; }
+.ap-figure figcaption span { font-size: .8rem; color: var(--ink-faint); }
+.ap-backtest .ap-figure { margin-top: 16px; }
+
+/* --- feeds, issues, diagnosis ------------------------------------------------------- */
+
+.ap-feeds { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.ap-feeds li { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: center; font-size: .86rem; }
+.ap-feed-age { grid-column: 2; font-size: .72rem; color: var(--ink-faint); overflow-wrap: anywhere; }
+.ap-pill {
+  grid-row: span 2; align-self: start; font-family: var(--mono); font-size: .66rem; letter-spacing: .04em;
+  text-transform: uppercase; padding: 3px 7px; border-radius: 4px; border: 1px solid currentColor; white-space: nowrap;
+}
+.ap-pill.good { color: var(--good); }
+.ap-pill.bad { color: var(--error); }
+
+.ap-strip { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; }
+.ap-strip li { height: 26px; border-radius: 3px; display: grid; place-items: center; font-size: .7rem; color: #fff; }
+.ap-strip li.ok { background: color-mix(in srgb, var(--good) 72%, var(--raised)); }
+.ap-strip li.bad { background: var(--error); }
+
+.ap-kv { display: grid; gap: 8px; margin: 0; }
+.ap-kv > div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: .86rem; border-bottom: 1px solid var(--rule); padding-bottom: 6px; }
+.ap-kv dd { white-space: nowrap; }
+.ap-kv dt { color: var(--ink-soft); }
+.ap-kv dd { margin: 0; text-align: right; }
+
+/* --- ask ---------------------------------------------------------------------------- */
+
+.ap-ask-form { display: flex; gap: 10px; flex-wrap: wrap; }
+.ap-ask-form input {
+  flex: 1 1 260px; min-width: 0; height: 44px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--rule-strong);
+  background: var(--ground); color: var(--ink); font: inherit; font-size: .95rem;
+}
+.ap-ask-form input:focus { outline: 2px solid var(--ap-mint); outline-offset: 0; border-color: var(--ink); }
+.ap-quick { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.ap-chip {
+  height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--rule-strong); background: var(--raised);
+  color: var(--ink); font: inherit; font-size: .82rem; cursor: pointer;
+}
+.ap-chip:hover:not(:disabled) { background: var(--ap-mint); color: var(--ap-mint-ink); border-color: #111111; }
+.ap-chip.on { border-color: var(--ink); }
+.ap-chip:disabled { opacity: .5; cursor: not-allowed; }
+.ap-answer { margin-top: 16px; border-top: 1px solid var(--rule); padding-top: 12px; }
+.ap-questions p { margin: 8px 0 0; font-size: .92rem; }
+.ap-findings { list-style: none; padding: 0; margin: 10px 0 0; display: flex; flex-direction: column; gap: 6px; font-size: .85rem; color: var(--ink-soft); }
+.ap-md { margin-top: 8px; }
+.ap-md h2 { font-size: 1.02rem; }
+.ap-md table { font-size: .8rem; }
+
+/* --- notes and attribution ---------------------------------------------------------- */
+
+.ap-notes { margin: 8px 0 18px; }
+.ap-notes h2 { font-size: 1.05rem; margin-bottom: 10px; }
+.ap-notes ul { margin: 0; padding-left: 18px; color: var(--ink-soft); font-size: .88rem; display: flex; flex-direction: column; gap: 6px; }
+.ap-notes b { color: var(--ink); }
+.ap-attr { border-top: 1px solid var(--rule); padding-top: 18px; margin-top: 12px; }
+.ap-attr ul { margin: 10px 0 0; padding-left: 18px; font-size: .8rem; color: var(--ink-faint); display: flex; flex-direction: column; gap: 3px; }
+.ap-badge-line { margin: 0; }
+
+/* --- phone -------------------------------------------------------------------------- */
+
+@media (max-width: 600px) {
+  .ap.page { padding: 0 16px 48px; }
+  .ap-card-head { flex-direction: column; }
+  .ap-strip { grid-template-columns: repeat(12, 1fr); }
+  .ap-tip { min-width: 160px; font-size: .74rem; }
+  .ap-kpi { padding: 10px 11px; }
+  .ap-kpi dd b { font-size: 1.1rem; }
+}
