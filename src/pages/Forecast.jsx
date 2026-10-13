@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { getSnapshot } from '../apollo/api.js'
 import AskApollo from '../apollo/Ask.jsx'
 import { COUNTRY_ORDER, modelsOf } from '../apollo/data.js'
@@ -64,18 +65,37 @@ export default function Forecast() {
     .filter(Boolean).sort()[0]
 
   return (
-    <div className="ap page">
+    <div className="ap">
+      {/* The page carries its own top bar, like the landing page and the Workbench (App hides
+          the docs header on this route): mark, wordmark, and the way back. */}
+      <header className="ap-top">
+        <div className="ap-top-inner">
+          <Link to="/" className="ap-brand">
+            <img src="/assets/sukrim-icon.svg" alt="" />
+            <img src="/assets/sukrim-wordmark.svg" alt="SUKRIM" className="ap-wordmark" />
+          </Link>
+          <span className="ap-top-sep" aria-hidden="true" />
+          <span className="ap-top-title">Load forecast</span>
+          <nav className="ap-top-nav">
+            <Link to="/">Overview</Link>
+            <Link to="/docs">Docs</Link>
+            <Link to="/workbench" className="ap-pill dark">Workbench <span className="ap-mono">→</span></Link>
+          </nav>
+        </div>
+      </header>
+
+      <div className="ap-wrap">
       <header className="ap-hero">
-        <p className="eyebrow">Apollo · national load forecast</p>
-        <h1>How much electricity each country will use in the next 48 hours</h1>
-        <p className="lede">
+        <p className="ap-kicker">Apollo · national load forecast</p>
+        <h1>How much electricity each country will use in the next <mark>48 hours</mark></h1>
+        <p className="ap-lede">
           Every hour Apollo reads the newest published load and the newest weather forecast, and
           issues a forecast of national demand for the next 48 hours with an uncertainty band. Two
           models make it — TabPFN v2 and Chronos-2 — and their average; one is shown, the others
           run in the background. Every forecast is kept, and later scored against the first value
           the grid operator publishes.
         </p>
-        <div className="stat-line">
+        <div className="ap-stats">
           {snap && <span>snapshot <b>{utcTime(snap.generated_at)}</b> ({ageSince(snap.generated_at, now)} ago)</span>}
           {snap && (liveDays >= 0.05
             ? <span>live for <b>{liveDays.toFixed(1)} days</b></span>
@@ -104,7 +124,7 @@ export default function Forecast() {
           <section className="ap-card ap-main">
             <header className="ap-card-head">
               <div>
-                <p className="eyebrow">{c.name} · next 48 h</p>
+                <p className="ap-kicker">{c.name} · next 48 h</p>
                 <h2>Published load and the newest forecast</h2>
                 <p className="ap-small">{c.target}</p>
               </div>
@@ -151,6 +171,7 @@ export default function Forecast() {
       )}
 
       {snap && <Attribution items={snap.attribution} />}
+      </div>
     </div>
   )
 }

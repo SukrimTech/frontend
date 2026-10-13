@@ -35,14 +35,14 @@ export function CountryCards({ countries, selected, onSelect, now }) {
                   className={`ap-country${selected === k ? ' on' : ''}`} onClick={() => onSelect(k)}>
             <span className="ap-country-head">
               <b>{c.name}</b>
-              <span className="mono">{k}</span>
+              <span className="ap-mono">{k}</span>
             </span>
             <span className="ap-country-body">
               <span className="ap-country-figs">
-                <span><em>now</em><b className="num">{a ? gw(a.value) : '–'}</b>
+                <span><em>now</em><b className="ap-num">{a ? gw(a.value) : '–'}</b>
                   <small>{a ? `${localTime(a.t, c.tz, { day: now - ms(a.t) > 864e5 })} · ${ageSince(a.t, now)} ago` : 'no load yet'}</small>
                 </span>
-                <span><em>next period</em><b className="num">{next ? gw(next.point) : '–'}</b>
+                <span><em>next period</em><b className="ap-num">{next ? gw(next.point) : '–'}</b>
                   <small>{next ? localTime(next.t, c.tz, { day: false }) : 'no issue yet'}</small>
                 </span>
               </span>
@@ -81,7 +81,7 @@ export function Kpis({ c, model, now }) {
       {tiles.map((t) => (
         <div key={t.label} className="ap-kpi">
           <dt>{t.label}</dt>
-          <dd><b className="num">{t.value}</b><small>{t.sub}</small></dd>
+          <dd><b className="ap-num">{t.value}</b><small>{t.sub}</small></dd>
         </div>
       ))}
     </dl>
@@ -260,7 +260,7 @@ export function LiveScores({ c }) {
     <section className="ap-card">
       <header className="ap-card-head">
         <div>
-          <p className="eyebrow">Live</p>
+          <p className="ap-kicker">Live</p>
           <h2>Live accuracy — scored against the operator’s first published values</h2>
         </div>
         <div className="ap-seg" role="group" aria-label="Window">
@@ -291,7 +291,7 @@ export function Backtest({ c }) {
     <section className="ap-card ap-backtest">
       <header className="ap-card-head">
         <div>
-          <p className="eyebrow">Backtest — not live accuracy</p>
+          <p className="ap-kicker">Backtest — not live accuracy</p>
           <h2>Backtest (2025, hourly issues, forecast weather)</h2>
         </div>
       </header>
@@ -371,13 +371,13 @@ export function Feeds({ c, feeds }) {
     && !f.series.includes('.history'))
   return (
     <section className="ap-card">
-      <header className="ap-card-head"><div><p className="eyebrow">Inputs</p><h2>Feeds</h2></div></header>
+      <header className="ap-card-head"><div><p className="ap-kicker">Inputs</p><h2>Feeds</h2></div></header>
       <ul className="ap-feeds">
         {own.map((f) => {
           const future = isNum(f.age_min) && f.age_min < 0
           return (
             <li key={f.series}>
-              <span className={`ap-pill ${f.stale ? 'bad' : 'good'}`}>{f.stale ? '✕ stale' : '✓ fresh'}</span>
+              <span className={`ap-status ${f.stale ? 'bad' : 'good'}`}>{f.stale ? '✕ stale' : '✓ fresh'}</span>
               <span className="ap-feed-name">{SERIES_LABEL[f.series] || f.series}</span>
               <span className="ap-feed-age mono">
                 {future ? `covers to ${localDateTime(f.newest_valid_time, c.tz)}`
@@ -388,7 +388,7 @@ export function Feeds({ c, feeds }) {
         })}
         {pulls.map((f) => (
           <li key={f.series}>
-            <span className={`ap-pill ${f.ok ? 'good' : 'bad'}`}>{f.ok ? '✓ pull ok' : '✕ pull failed'}</span>
+            <span className={`ap-status ${f.ok ? 'good' : 'bad'}`}>{f.ok ? '✓ pull ok' : '✕ pull failed'}</span>
             <span className="ap-feed-name">{f.series.replace('pull:', 'last pull ')}</span>
             <span className="ap-feed-age mono">{utcTime(f.last_retrieved)}{f.message ? ` · ${f.message}` : ''}</span>
           </li>
@@ -405,7 +405,7 @@ export function IssueStrip({ c, now }) {
   const span = log.length ? (ms(log.at(-1).issue_time) - ms(log[0].issue_time)) / 3.6e6 : 0
   return (
     <section className="ap-card">
-      <header className="ap-card-head"><div><p className="eyebrow">Service</p><h2>Hourly issues</h2></div></header>
+      <header className="ap-card-head"><div><p className="ap-kicker">Service</p><h2>Hourly issues</h2></div></header>
       {log.length ? (
         <>
           <ol className="ap-strip" aria-label="Last issues, oldest first">
@@ -435,14 +435,14 @@ export function Diagnosis({ c }) {
   const d = c.diagnosis || {}
   return (
     <section className="ap-card">
-      <header className="ap-card-head"><div><p className="eyebrow">Heuristic</p><h2>Weather or model?</h2></div></header>
+      <header className="ap-card-head"><div><p className="ap-kicker">Heuristic</p><h2>Weather or model?</h2></div></header>
       {isNum(d.n) && d.n > 0 && isNum(d.r2_temperature) ? (
         <>
           <dl className="ap-kv">
-            <div><dt>Share of error variance explained by temperature</dt><dd className="num">{pct(100 * d.r2_temperature, 0)}</dd></div>
-            <div><dt>Load error per K of weather error</dt><dd className="num">{signedMw(d.slope_mw_per_k)}</dd></div>
-            <div><dt>Mean temperature forecast error</dt><dd className="num">{isNum(d.mean_abs_temp_error_k) ? `${d.mean_abs_temp_error_k.toFixed(2)} K` : '–'}</dd></div>
-            <div><dt>Scored targets</dt><dd className="num">{d.n.toLocaleString('en-GB')}</dd></div>
+            <div><dt>Share of error variance explained by temperature</dt><dd className="ap-num">{pct(100 * d.r2_temperature, 0)}</dd></div>
+            <div><dt>Load error per K of weather error</dt><dd className="ap-num">{signedMw(d.slope_mw_per_k)}</dd></div>
+            <div><dt>Mean temperature forecast error</dt><dd className="ap-num">{isNum(d.mean_abs_temp_error_k) ? `${d.mean_abs_temp_error_k.toFixed(2)} K` : '–'}</dd></div>
+            <div><dt>Scored targets</dt><dd className="ap-num">{d.n.toLocaleString('en-GB')}</dd></div>
           </dl>
           <p className="ap-small">{MODEL_LABEL[d.model] || 'The shown model'}, over the last 30 days.{' '}
             {d.note ? `${d.note.charAt(0).toUpperCase()}${d.note.slice(1)}.` : ''} Not a decomposition:

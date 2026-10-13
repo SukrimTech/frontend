@@ -980,14 +980,9 @@ td.n { font-family: var(--mono); text-align: right; font-size: .84rem; }
 .boundary .mono { font-size: .78rem; color: var(--error); word-break: break-word; }
 .boundary .note { font-size: .84rem; color: var(--ink-soft); margin: 0; }
 
-/* Phones: the docs header's items fit one row only with tighter gaps. With the Load forecast
-   link there are five, which a 360–390 px phone cannot hold, so there the wordmark (already a
-   link to /) is the way home and the Overview link steps aside. */
-@media (max-width: 480px) {
-  .nav .page { padding: 0 16px; }
-  .nav-inner { gap: 10px; }
-  .nav-links { gap: 10px; }
-  .nav-links a { font-size: .8rem; white-space: nowrap; }
-  .nav-links a.nav-home { display: none; }
-  .nav-links .icon-btn { flex: none; }
+/* Phones: the docs header's four items fit one row only with tighter gaps. */
+@media (max-width: 420px) {
+  .nav-inner { gap: 12px; }
+  .nav-links { gap: 12px; }
+  .nav-links a { font-size: .86rem; }
 }

@@ -49,13 +49,13 @@ export default function AskApollo() {
   return (
     <section className="ap-card ap-ask">
       <header className="ap-card-head">
-        <div><p className="eyebrow">The agent</p><h2>Ask Apollo</h2></div>
+        <div><p className="ap-kicker">The agent</p><h2>Ask Apollo</h2></div>
       </header>
       <form onSubmit={submit} className="ap-ask-form">
         <label htmlFor="ap-ask-input" className="sr">Your question</label>
         <input id="ap-ask-input" type="text" value={prompt} onChange={(e) => setPrompt(e.target.value)}
                placeholder="e.g. what will Great Britain’s demand peak be tomorrow?" maxLength={400} />
-        <button type="submit" className="btn btn-primary" disabled={busy || !prompt.trim()}>{busy ? 'Asking…' : 'Ask'}</button>
+        <button type="submit" className="ap-pill dark" disabled={busy || !prompt.trim()}>{busy ? 'Asking…' : 'Ask'}</button>
       </form>
       <div className="ap-quick" role="group" aria-label="Quick questions">
         {QUICK.map((q) => (
@@ -93,7 +93,7 @@ export default function AskApollo() {
           )}
           {res.error && <p className="ap-fail">{res.error}</p>}
           {res.report_markdown && res.state === 'report' && (
-            <div className="md ap-md"><ReactMarkdown remarkPlugins={[remarkGfm]}>{res.report_markdown}</ReactMarkdown></div>
+            <div className="ap-md"><ReactMarkdown remarkPlugins={[remarkGfm]}>{res.report_markdown}</ReactMarkdown></div>
           )}
         </div>
       )}

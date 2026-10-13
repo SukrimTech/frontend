@@ -40,7 +40,7 @@ export default function App() {
   // progress bar. Rendering the app chrome above it would stack two headers.
   // The workbench, likewise, carries the design's own top bar.
   const { pathname } = useLocation()
-  const ownChrome = pathname === '/' || pathname === '/workbench'
+  const ownChrome = pathname === '/' || pathname === '/workbench' || pathname === '/forecast'
   return (
     <>
       <a className="skip" href="#main">Skip to content</a>
@@ -48,9 +48,8 @@ export default function App() {
         <div className="page nav-inner">
           <Link to="/" className="brand">Sukrim<span className="brand-dot">.</span></Link>
           <nav className="nav-links">
-            <NavLink to="/" end className="nav-home">Overview</NavLink>
+            <NavLink to="/" end>Overview</NavLink>
             <NavLink to="/workbench">Workbench</NavLink>
-            <NavLink to="/forecast">Load forecast</NavLink>
             <NavLink to="/docs">Docs</NavLink>
             <button className="icon-btn" onClick={toggle}
                     aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}>
