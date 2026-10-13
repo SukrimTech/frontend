@@ -21,6 +21,12 @@ const QUICK = [
 ]
 const COUNTRY = { FR: 'France', GB: 'Great Britain', CH: 'Switzerland' }
 
+/** The answer and its numbers; the report's provenance sections stay in the API response. */
+function answerOnly(md) {
+  const keep = ['Answer', 'Forecast', 'Accuracy']
+  return md.split(/\n(?=## )/).filter((part) => keep.some((k) => part.startsWith(`## ${k}`))).join('\n')
+}
+
 export default function AskApollo() {
   const [prompt, setPrompt] = useState('')
   const [busy, setBusy] = useState(false)
@@ -49,7 +55,7 @@ export default function AskApollo() {
   return (
     <section className="ap-card ap-ask">
       <header className="ap-card-head">
-        <div><p className="ap-kicker">The agent</p><h2>Ask Apollo</h2></div>
+        <div><p className="ap-kicker">Assistant</p><h2>Ask Apollo</h2></div>
       </header>
       <form onSubmit={submit} className="ap-ask-form">
         <label htmlFor="ap-ask-input" className="sr">Your question</label>
@@ -66,7 +72,6 @@ export default function AskApollo() {
       {err && <p className="ap-fail">{err}</p>}
       {res && (
         <div className="ap-answer" aria-live="polite">
-          <p className="ap-small mono">{res.summary}{res.elapsed_s != null ? ` · ${res.elapsed_s.toFixed(2)} s` : ''}</p>
           {res.questions?.length > 0 && (
             <div className="ap-questions">
               {res.questions.map((q) => (
@@ -84,16 +89,9 @@ export default function AskApollo() {
               ))}
             </div>
           )}
-          {res.findings?.length > 0 && (
-            <ul className="ap-findings">
-              {res.findings.map((f, i) => (
-                <li key={i}><span className={`sev sev-${f.severity}`}>{f.severity}</span> {f.message}</li>
-              ))}
-            </ul>
-          )}
           {res.error && <p className="ap-fail">{res.error}</p>}
           {res.report_markdown && res.state === 'report' && (
-            <div className="ap-md"><ReactMarkdown remarkPlugins={[remarkGfm]}>{res.report_markdown}</ReactMarkdown></div>
+            <div className="ap-md"><ReactMarkdown remarkPlugins={[remarkGfm]}>{answerOnly(res.report_markdown)}</ReactMarkdown></div>
           )}
         </div>
       )}

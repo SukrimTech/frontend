@@ -1,20 +1,15 @@
 /*
-  The Load forecast page's panels. Each reads one part of the snapshot and draws it; none of them
-  computes a forecast or a score. Missing fields are normal (a service that has run for an hour
-  has no live scores and maybe no backtest yet), so every panel says plainly what is not there
-  rather than drawing an empty frame.
+  The Load forecast dashboard's panels. Each reads one part of the snapshot and draws it; none of
+  them computes a forecast or a score. Missing fields are normal (Switzerland's actuals arrive
+  monthly), so a panel shows a dash or a one-line status rather than an empty frame.
 */
 
 import { useState } from 'react'
 import { Sparkline, TimeChart, Legend } from './charts.jsx'
-import {
-  MODEL_LABEL, SERIES_LABEL, age, ageSince, gw, gwNum, isNum, localDateTime, localTime, ms,
-  mwFmt, pct, signedMw, utcTime,
-} from './format.js'
-import {
-  COUNTRY_ORDER, latestActual, newestLog, nextRow, peakRow, rowAtLead, rowsOf,
-  toBand, toPoints,
-} from './data.js'
+import { MODEL_LABEL, gw, gwNum, isNum, localTime, ms, mwFmt, pct, signedMw } from './format.js'
+import { COUNTRY_ORDER, latestActual, nextRow, peakRow, rowsOf, toBand, toPoints } from './data.js'
+
+const GW_AXIS = (v) => (v / 1000).toFixed(v % 1000 ? 1 : 0)
 
 /* --- the country switcher ----------------------------------------------------------- */
 
@@ -26,28 +21,20 @@ export function CountryCards({ countries, selected, onSelect, now }) {
         const a = latestActual(c)
         const rows = rowsOf(c, c.shown)
         const next = nextRow(rows, now)
-        const since = now - 24 * 3.6e6
-        const past = toPoints((c.actuals || []).filter((x) => ms(x.t) >= since), 'value')
+        const past = toPoints((c.actuals || []).filter((x) => ms(x.t) >= now - 24 * 3.6e6), 'value')
         const fut = rows.filter((r) => r.ms >= (a ? ms(a.t) : now) && r.ms <= now + 24 * 3.6e6)
           .map((r) => ({ t: r.ms, v: r.point }))
         return (
           <button key={k} type="button" role="tab" aria-selected={selected === k}
                   className={`ap-country${selected === k ? ' on' : ''}`} onClick={() => onSelect(k)}>
-            <span className="ap-country-head">
-              <b>{c.name}</b>
-              <span className="ap-mono">{k}</span>
+            <span className="ap-country-head"><b>{c.name}</b><span className="ap-mono">{k}</span></span>
+            <span className="ap-country-figs">
+              <span><em>load</em><b className="ap-num">{a ? gw(a.value) : '–'}</b>
+                <small>{a ? localTime(a.t, c.tz, { day: now - ms(a.t) > 864e5 }) : '–'}</small></span>
+              <span><em>next</em><b className="ap-num">{next ? gw(next.point) : '–'}</b>
+                <small>{next ? localTime(next.t, c.tz, { day: false }) : '–'}</small></span>
             </span>
-            <span className="ap-country-body">
-              <span className="ap-country-figs">
-                <span><em>now</em><b className="ap-num">{a ? gw(a.value) : '–'}</b>
-                  <small>{a ? `${localTime(a.t, c.tz, { day: now - ms(a.t) > 864e5 })} · ${ageSince(a.t, now)} ago` : 'no load yet'}</small>
-                </span>
-                <span><em>next period</em><b className="ap-num">{next ? gw(next.point) : '–'}</b>
-                  <small>{next ? localTime(next.t, c.tz, { day: false }) : 'no issue yet'}</small>
-                </span>
-              </span>
-              <Sparkline past={past} future={fut} />
-            </span>
+            <Sparkline past={past} future={fut} />
           </button>
         )
       })}
@@ -55,26 +42,31 @@ export function CountryCards({ countries, selected, onSelect, now }) {
   )
 }
 
-/* --- the headline numbers ------------------------------------------------------------ */
+/* --- headline numbers --------------------------------------------------------------- */
 
-export function Kpis({ c, model, now }) {
+function allLeads(records, model) {
+  return (records || []).find((r) => r.model === model && r.lead_bin?.startsWith('all'))
+}
+
+export function KpiStrip({ c, model, now }) {
   const rows = rowsOf(c, model)
+  const a = latestActual(c)
   const next = nextRow(rows, now)
   const peak = peakRow(rows, now)
-  const at24 = rowAtLead(rows, 24)
-  const log = newestLog(c)
-  const issue = c.latest?.[model]?.issue_time
+  const live = allLeads(c.live_scores?.['7d'], model)
+  const op = allLeads(c.live_scores?.['7d'], 'operator')
+  const monthly = c.code === 'CH'
+  const pending = monthly ? 'awaiting Swissgrid monthly data' : 'scoring starts with the first targets'
   const tiles = [
+    { label: 'Load', value: a ? gw(a.value) : '–', sub: a ? localTime(a.t, c.tz, { day: now - ms(a.t) > 864e5 }) : '–' },
     { label: 'Next period', value: next ? gw(next.point) : '–',
-      sub: next ? `${localTime(next.t, c.tz)} · 80 % band ${gwNum(next.q10)}–${gwNum(next.q90)}` : 'no stored issue' },
-    { label: 'Peak in the next 24 h', value: peak ? gw(peak.point) : '–',
-      sub: peak ? `at ${localTime(peak.t, c.tz)}` : '–' },
-    { label: 'Band width at +24 h', value: at24 && isNum(at24.q90) ? mwFmt(at24.q90 - at24.q10) : '–',
-      sub: at24 && isNum(at24.point) ? `P10–P90, ${pct(100 * (at24.q90 - at24.q10) / at24.point)} of the forecast` : '–' },
-    { label: 'Load known until', value: log?.load_known_until ? localTime(log.load_known_until, c.tz, { day: false }) : '–',
-      sub: isNum(log?.data_age_h) ? `${age(log.data_age_h * 60)} before the issue` : '–' },
-    { label: 'Issued', value: issue ? localTime(issue, c.tz, { day: false }) : '–',
-      sub: log?.weather_run && log.weather_run !== 'None' ? `weather run available ${utcTime(log.weather_run.replace(' ', 'T').replace('+00:00', 'Z'))}` : 'weather run –' },
+      sub: next ? `P10–P90 ${gwNum(next.q10)}–${gwNum(next.q90)} GW` : '–' },
+    { label: 'Peak, next 24 h', value: peak ? gw(peak.point) : '–', sub: peak ? localTime(peak.t, c.tz) : '–' },
+    { label: 'MAE · 7 d', value: live ? mwFmt(live.mae) : '–', sub: live ? `${live.n.toLocaleString('en-GB')} forecasts` : pending },
+    { label: 'MAPE · 7 d', value: live ? pct(live.mape, 2) : '–', sub: live ? `bias ${signedMw(live.bias)}` : pending },
+    { label: 'Coverage · 7 d', value: live ? pct(live.cover80, 0) : '–', sub: 'P10–P90, target 80 %' },
+    { label: 'Operator MAE · 7 d', value: op ? mwFmt(op.mae) : '–',
+      sub: op ? `MAPE ${pct(op.mape, 2)}` : (monthly ? 'no operator forecast of this series' : '–') },
   ]
   return (
     <dl className="ap-kpis">
@@ -88,61 +80,53 @@ export function Kpis({ c, model, now }) {
   )
 }
 
-/* --- the main chart ------------------------------------------------------------------ */
-
-/** Before the first issue: the published load alone, so the page still shows what is live. */
-export function ActualsChart({ c }) {
-  const pts = toPoints(c.actuals || [], 'value')
-  const last = pts.at(-1)?.t
-  if (!last) return <p className="ap-empty">No published load in the snapshot yet.</p>
-  return (
-    <>
-      <p className="ap-empty">No forecast has been stored for {c.name} yet — the hourly service has not issued
-        here. The published load of the last 48 h is shown.</p>
-      <TimeChart tz={c.tz} height={260} xDomain={[last - 48 * 3.6e6, last]}
-                 lines={[{ key: 'actual', label: 'Published load', cls: 'actual', points: pts.filter((p) => p.t >= last - 48 * 3.6e6) }]}
-                 fmt={(v) => gw(v)} axisFmt={(v) => (v / 1000).toFixed(v % 1000 ? 1 : 0)} yLabel="GW"
-                 ariaLabel={`${c.name}: published load for the last 48 hours`} />
-    </>
-  )
-}
+/* --- the forecast chart ------------------------------------------------------------- */
 
 export function FanChart({ c, model, operatorLabel }) {
   const issue = c.latest?.[model]
   const rows = issue?.rows || []
-  if (!rows.length) return <ActualsChart c={c} />
+  const actualAll = toPoints(c.actuals || [], 'value')
+  if (!rows.length) {
+    const last = actualAll.at(-1)?.t
+    if (!last) return <p className="ap-empty">No data yet.</p>
+    return <TimeChart tz={c.tz} height={340} xDomain={[last - 48 * 3.6e6, last]}
+                      lines={[{ key: 'actual', label: 'Load', cls: 'actual', points: actualAll }]}
+                      fmt={(v) => gw(v)} axisFmt={GW_AXIS} yLabel="GW" ariaLabel={`${c.name}: load`} />
+  }
   const first = ms(rows[0].t)
   const last = ms(rows[rows.length - 1].t)
-  const from = first - 48 * 3.6e6
-  const actual = toPoints((c.actuals || []).filter((x) => ms(x.t) >= from), 'value')
+  const recent = actualAll.filter((p) => p.t >= first - 48 * 3.6e6)
+  // no recent load (Swissgrid publishes monthly): the chart starts at the forecast
+  const from = recent.length ? first - 48 * 3.6e6 : first
+  const actual = recent
   const op = toPoints((c.operator?.rows || []).filter((x) => ms(x.t) >= from && ms(x.t) <= last), 'value')
   const lines = [
-    { key: 'actual', label: 'Published load', cls: 'actual', points: actual },
-    { key: 'fc', label: `${MODEL_LABEL[model]} forecast`, cls: 'fc', points: toPoints(rows, 'point') },
+    { key: 'actual', label: 'Load', cls: 'actual', points: actual },
+    { key: 'fc', label: `Forecast (${MODEL_LABEL[model]})`, cls: 'fc', points: toPoints(rows, 'point') },
   ]
   if (op.length) lines.push({ key: 'op', label: operatorLabel, cls: 'op', dash: true, points: op })
   const bands = [
-    { key: 'b80', label: 'P10–P90 (80 % band)', cls: 'fc outer', points: toBand(rows, 'q10', 'q90') },
-    { key: 'b50', label: 'P25–P75 (50 % band)', cls: 'fc inner', points: toBand(rows, 'q25', 'q75') },
+    { key: 'b80', label: 'P10–P90', cls: 'fc outer', points: toBand(rows, 'q10', 'q90') },
+    { key: 'b50', label: 'P25–P75', cls: 'fc inner', points: toBand(rows, 'q25', 'q75') },
   ]
   return (
     <>
       <Legend items={[...lines.map((l) => ({ key: l.key, cls: l.cls, dash: l.dash, label: l.label })),
         { key: 'b80', cls: 'fc outer', band: true, label: 'P10–P90' },
         { key: 'b50', cls: 'fc inner', band: true, label: 'P25–P75' }]} />
-      <TimeChart tz={c.tz} lines={lines} bands={bands} height={340} xDomain={[from, last]}
-                 markers={[{ t: ms(issue.issue_time), label: `issued ${localTime(issue.issue_time, c.tz, { day: false })}` }]}
-                 fmt={(v) => gw(v)} axisFmt={(v) => (v / 1000).toFixed(v % 1000 ? 1 : 0)} yLabel="GW"
-                 ariaLabel={`${c.name}: published load for the last 48 hours and ${MODEL_LABEL[model]}'s forecast for the next 48 hours`} />
+      <TimeChart tz={c.tz} lines={lines} bands={bands} height={360} xDomain={[from, last]}
+                 markers={[{ t: ms(issue.issue_time), label: localTime(issue.issue_time, c.tz, { day: false }) }]}
+                 fmt={(v) => gw(v)} axisFmt={GW_AXIS} yLabel="GW"
+                 ariaLabel={`${c.name}: load for the last 48 hours and the forecast for the next 48 hours`} />
       <details className="ap-tableview">
-        <summary>Show the forecast as a table</summary>
+        <summary>Forecast table</summary>
         <div className="ap-scroll">
           <table>
-            <thead><tr><th>Period (local)</th><th className="n">Lead</th><th className="n">Forecast, GW</th><th className="n">P10</th><th className="n">P25</th><th className="n">P75</th><th className="n">P90</th></tr></thead>
+            <thead><tr><th>Period</th><th className="n">Forecast, GW</th><th className="n">P10</th><th className="n">P25</th><th className="n">P75</th><th className="n">P90</th></tr></thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.t}>
-                  <td>{localTime(r.t, c.tz)}</td><td className="n">{isNum(r.lead_h) ? `${r.lead_h.toFixed(1)} h` : '–'}</td>
+                  <td>{localTime(r.t, c.tz)}</td>
                   <td className="n">{gwNum(r.point)}</td><td className="n">{gwNum(r.q10)}</td><td className="n">{gwNum(r.q25)}</td>
                   <td className="n">{gwNum(r.q75)}</td><td className="n">{gwNum(r.q90)}</td>
                 </tr>
@@ -155,45 +139,14 @@ export function FanChart({ c, model, operatorLabel }) {
   )
 }
 
-/* --- what was said against what happened --------------------------------------------- */
-
-export function Track({ c, model, kind, title, note, liveDays }) {
-  const pts = c.tracks?.[kind]?.[model] || []
-  return (
-    <figure className="ap-card ap-figure">
-      <figcaption><b>{title}</b><span>{note}</span></figcaption>
-      {pts.length ? (
-        <>
-          <Legend items={[{ key: 'a', cls: 'actual', label: 'Published load (first release)' },
-            { key: 'f', cls: 'fc', label: `${MODEL_LABEL[model]}` },
-            { key: 'b', cls: 'fc outer', band: true, label: 'P10–P90' }]} />
-          <TimeChart tz={c.tz} height={230}
-                     lines={[{ key: 'a', label: 'Published', cls: 'actual', points: toPoints(pts, 'actual') },
-                       { key: 'f', label: 'Forecast', cls: 'fc', points: toPoints(pts, 'point') }]}
-                     bands={[{ key: 'b', label: 'P10–P90', cls: 'fc outer', points: toBand(pts, 'q10', 'q90') }]}
-                     fmt={(v) => gw(v)} axisFmt={(v) => (v / 1000).toFixed(v % 1000 ? 1 : 0)} yLabel="GW"
-                     ariaLabel={`${title}: forecast against published load`} />
-        </>
-      ) : (
-        <p className="ap-empty">
-          Live scoring starts once the first forecasts reach their target hours.{' '}
-          {isNum(liveDays) && liveDays > 0
-            ? `Apollo has been issuing here for ${liveDays.toFixed(1)} days.`
-            : 'Apollo has not issued here yet.'}
-        </p>
-      )}
-    </figure>
-  )
-}
-
-/* --- score tables -------------------------------------------------------------------- */
+/* --- accuracy ----------------------------------------------------------------------- */
 
 const METRICS = {
-  mae: { label: 'MAE', fmt: (v) => mwFmt(v), best: 'low', note: 'mean absolute error of the point forecast' },
-  mape: { label: 'MAPE', fmt: (v) => pct(v, 2), best: 'low', note: 'mean absolute percentage error' },
-  pinball: { label: 'Pinball', fmt: (v) => mwFmt(v), best: 'low', note: 'mean pinball loss over P10, P25, P50, P75, P90 (lower is better)' },
-  cover80: { label: 'P10–P90 coverage', fmt: (v) => pct(v, 1), best: 'near80', note: 'share of actual values inside the 80 % band (nominal 80 %)' },
-  bias: { label: 'Bias', fmt: (v) => signedMw(v), best: 'near0', note: 'mean of forecast minus actual' },
+  mae: { label: 'MAE', fmt: (v) => mwFmt(v), best: 'low' },
+  mape: { label: 'MAPE', fmt: (v) => pct(v, 2), best: 'low' },
+  pinball: { label: 'Pinball loss', fmt: (v) => mwFmt(v), best: 'low' },
+  cover80: { label: 'P10–P90 coverage', fmt: (v) => pct(v, 1), best: 'near80' },
+  bias: { label: 'Bias', fmt: (v) => signedMw(v), best: 'near0' },
 }
 
 function bestOf(vals, rule) {
@@ -204,282 +157,179 @@ function bestOf(vals, rule) {
   return ok.reduce((b, v) => (Math.abs(v - target) < Math.abs(b - target) ? v : b))
 }
 
-export function ScoreMatrix({ records, models, shown, caption }) {
-  const [metric, setMetric] = useState('mae')
+function ScoreMatrix({ records, models, metric }) {
   const bins = [...new Set(records.map((r) => r.lead_bin))]
   const present = models.filter((m) => records.some((r) => r.model === m && isNum(r[metric])))
   const cell = (m, b) => records.find((r) => r.model === m && r.lead_bin === b)
   const M = METRICS[metric]
+  if (!present.length) return <p className="ap-empty">–</p>
   return (
-    <div className="ap-matrix">
-      <div className="ap-seg" role="group" aria-label="Score">
+    <div className="ap-scroll ap-matrix">
+      <table>
+        <thead>
+          <tr><th>Lead time</th>{present.map((m) => <th key={m} className="n">{MODEL_LABEL[m] || m}</th>)}
+            <th className="n">n</th></tr>
+        </thead>
+        <tbody>
+          {bins.map((b) => {
+            const vals = present.map((m) => cell(m, b)?.[metric])
+            const best = bestOf(vals, M.best)
+            const n = cell(present[0], b)?.n
+            return (
+              <tr key={b} className={b.startsWith('all') ? 'total' : ''}>
+                <td>{b.startsWith('all') ? 'All leads' : b}</td>
+                {present.map((m, i) => (
+                  <td key={m} className={`n${isNum(vals[i]) && vals[i] === best ? ' best' : ''}`}>
+                    {isNum(vals[i]) ? M.fmt(vals[i]) : '–'}
+                  </td>
+                ))}
+                <td className="n muted">{isNum(n) ? n.toLocaleString('en-GB') : '–'}</td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+const VIEWS = {
+  live7: { label: 'Live · 7 days', models: ['average', 'tabpfn_v2', 'chronos2', 'operator'] },
+  live30: { label: 'Live · 30 days', models: ['average', 'tabpfn_v2', 'chronos2', 'operator'] },
+  backtest: { label: 'Backtest · 2025', models: ['average', 'tabpfn_v2', 'chronos2', 'gbm', 'operator', 'persistence', 'naive_7d'] },
+}
+
+export function Accuracy({ c }) {
+  const [view, setView] = useState('live7')
+  const [metric, setMetric] = useState('mae')
+  const records = view === 'backtest' ? (c.backtest?.scores || [])
+    : (c.live_scores?.[view === 'live7' ? '7d' : '30d'] || [])
+  const daily = c.daily_scores || []
+  const dm = metric === 'mape' ? 'mape' : 'mae'
+  const dayT = (d) => Date.parse(`${d.day}T12:00:00Z`)
+  return (
+    <section className="ap-card">
+      <header className="ap-card-head">
+        <div><p className="ap-kicker">{c.name}</p><h2>Accuracy</h2></div>
+        <div className="ap-seg" role="group" aria-label="Period">
+          {Object.entries(VIEWS).map(([k, v]) => (
+            <button key={k} type="button" className={view === k ? 'on' : ''} aria-pressed={view === k}
+                    onClick={() => setView(k)}>{v.label}</button>
+          ))}
+        </div>
+      </header>
+      <div className="ap-seg ap-metrics" role="group" aria-label="Metric">
         {Object.entries(METRICS).map(([k, v]) => (
           <button key={k} type="button" className={metric === k ? 'on' : ''} aria-pressed={metric === k}
                   onClick={() => setMetric(k)}>{v.label}</button>
         ))}
       </div>
-      <p className="ap-small">{M.label}: {M.note}.{caption ? ` ${caption}` : ''}</p>
-      {present.length ? (
-        <div className="ap-scroll">
-          <table>
-            <thead>
-              <tr><th>Lead time</th>{present.map((m) => (
-                <th key={m} className="n">{MODEL_LABEL[m] || m}{m === shown ? <span className="ap-tag">shown</span> : null}</th>))}
-              <th className="n">n</th></tr>
-            </thead>
-            <tbody>
-              {bins.map((b) => {
-                const vals = present.map((m) => cell(m, b)?.[metric])
-                const best = bestOf(vals, M.best)
-                const n = cell(shown, b)?.n ?? cell(present[0], b)?.n
-                return (
-                  <tr key={b} className={b.startsWith('all') ? 'total' : ''}>
-                    <td>{b}</td>
-                    {present.map((m, i) => (
-                      <td key={m} className={`n${isNum(vals[i]) && vals[i] === best ? ' best' : ''}`}>
-                        {isNum(vals[i]) ? M.fmt(vals[i]) : '–'}
-                      </td>
-                    ))}
-                    <td className="n muted">{isNum(n) ? n.toLocaleString('en-GB') : '–'}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+      <div className={`ap-acc${view === 'backtest' ? ' wide' : ''}`}>
+        <div className="ap-acc-table">
+          {records.length
+            ? <ScoreMatrix records={records} models={VIEWS[view].models} metric={metric} />
+            : <p className="ap-empty">{c.code === 'CH' && view !== 'backtest'
+              ? 'Scored monthly, as Swissgrid publishes.' : 'No scores for this period yet.'}</p>}
         </div>
-      ) : <p className="ap-empty">No {M.label} for these models.</p>}
-    </div>
-  )
-}
-
-export function LiveScores({ c }) {
-  const [win, setWin] = useState('7d')
-  const recs = c.live_scores?.[win] || []
-  const any = Object.values(c.live_scores || {}).some((r) => r?.length)
-  return (
-    <section className="ap-card">
-      <header className="ap-card-head">
-        <div>
-          <p className="ap-kicker">Live</p>
-          <h2>Live accuracy — scored against the operator’s first published values</h2>
-        </div>
-        <div className="ap-seg" role="group" aria-label="Window">
-          {['7d', '30d'].map((w) => (
-            <button key={w} type="button" className={win === w ? 'on' : ''} aria-pressed={win === w}
-                    onClick={() => setWin(w)}>{w === '7d' ? 'Last 7 days' : 'Last 30 days'}</button>
-          ))}
-        </div>
-      </header>
-      {recs.length ? (
-        <ScoreMatrix records={recs} models={['average', 'tabpfn_v2', 'chronos2', 'operator']} shown={c.shown}
-                     caption="Bold marks the best value in each row." />
-      ) : (
-        <p className="ap-empty">
-          {any ? `No scored forecasts in the ${win === '7d' ? 'last 7' : 'last 30'} days.`
-            : 'No live scores yet: none of the stored forecasts has reached its target time with a published value. '
-              + 'This table is the only place the page calls a number “Apollo’s accuracy”.'}
-        </p>
-      )}
+        {view !== 'backtest' && (
+          <figure className="ap-figure">
+            <figcaption><b>Daily {METRICS[dm].label}</b></figcaption>
+            {daily.length ? (
+              <>
+                <Legend items={[{ key: 'a', cls: 'actual', label: MODEL_LABEL[c.shown] },
+                  { key: 'o', cls: 'op', dash: true, label: 'Grid operator' }]} />
+                <TimeChart tz={c.tz} height={200}
+                           lines={[{ key: 'a', label: MODEL_LABEL[c.shown], cls: 'actual', points: daily.map((d) => ({ t: dayT(d), v: d[dm] })) },
+                             { key: 'o', label: 'Grid operator', cls: 'op', dash: true, points: daily.map((d) => ({ t: dayT(d), v: d[`operator_${dm}`] })) }]}
+                           fmt={(v) => (dm === 'mape' ? pct(v, 2) : mwFmt(v))}
+                           axisFmt={(v) => (dm === 'mape' ? v.toFixed(1) : Math.round(v).toLocaleString('en-GB'))}
+                           yLabel={dm === 'mape' ? '%' : 'MW'} ariaLabel={`Daily ${METRICS[dm].label}`} />
+              </>
+            ) : <p className="ap-empty">–</p>}
+          </figure>
+        )}
+      </div>
     </section>
   )
 }
 
-export function Backtest({ c }) {
-  const bt = c.backtest || {}
-  const recs = bt.scores || []
-  return (
-    <section className="ap-card ap-backtest">
-      <header className="ap-card-head">
-        <div>
-          <p className="ap-kicker">Backtest — not live accuracy</p>
-          <h2>Backtest (2025, hourly issues, forecast weather)</h2>
-        </div>
-      </header>
-      <p className="ap-small">
-        Through 2025, each model forecast the next 48 h from regular hourly issue times, using only what
-        had been published by then and the weather forecasts as they stood at the time. History is the operator’s consolidated
-        data, not first releases, so this is a guide to live accuracy, not a measurement of it.
-      </p>
-      {recs.length ? (
-        <ScoreMatrix records={recs} shown={c.shown}
-                     models={['average', 'tabpfn_v2', 'chronos2', 'gbm', 'persistence', 'naive_7d', 'operator']}
-                     caption="Persistence is scored to 6 h only." />
-      ) : <p className="ap-empty">The backtest has not finished for {c.name} yet.</p>}
-      {bt.rule && (
-        <div className="ap-rule">
-          <p><b>Shown: {MODEL_LABEL[bt.rule.shown] || bt.rule.shown}.</b> {bt.rule.why}
-            {isNum(bt.rule.days) ? ` (${bt.rule.days} days of issues).` : ''}</p>
-          {bt.rule.mean_pinball && (
-            <p className="ap-small">Mean pinball on the test window:{' '}
-              {Object.entries(bt.rule.mean_pinball).map(([m, v]) => `${MODEL_LABEL[m] || m} ${mwFmt(v)}`).join(' · ')}.
-              The rule was written before any result: a clear winner (95 % interval excluding zero) is
-              shown; otherwise the average, unless it is clearly worse than one model.</p>
-          )}
-        </div>
-      )}
-      {bt.calibration && <Calibration cal={bt.calibration} />}
-      {bt.sample_week?.rows?.length > 0 && (
-        <figure className="ap-figure">
-          <figcaption><b>{bt.sample_week.title || 'A backtest week'}</b>
-            <span>backtest, {MODEL_LABEL[bt.sample_week.model] || bt.sample_week.model || ''}
-              {isNum(bt.sample_week.lead_h) ? `, ${bt.sample_week.lead_h} h ahead` : ''}</span></figcaption>
-          <TimeChart tz={c.tz} height={220}
-                     lines={[{ key: 'a', label: 'Published', cls: 'actual', points: toPoints(bt.sample_week.rows, 'actual') },
-                       { key: 'f', label: 'Forecast', cls: 'fc', points: toPoints(bt.sample_week.rows, 'point') }]}
-                     bands={[{ key: 'b', label: 'P10–P90', cls: 'fc outer', points: toBand(bt.sample_week.rows, 'q10', 'q90') }]}
-                     fmt={(v) => gw(v)} axisFmt={(v) => (v / 1000).toFixed(v % 1000 ? 1 : 0)} yLabel="GW"
-                     ariaLabel="Backtest week: forecast against published load" />
-        </figure>
-      )}
-    </section>
-  )
-}
+/* --- forecast inputs ---------------------------------------------------------------- */
 
-/** Coverage before and after the D5 widening, in whatever tabular shape the service wrote. */
-function Calibration({ cal }) {
-  const blocks = Object.entries(cal).filter(([, v]) => Array.isArray(v) && v.length)
-  if (!blocks.length) {
-    return <p className="ap-small">Calibration: {typeof cal === 'string' ? cal : JSON.stringify(cal)}</p>
+const GROUPS = [
+  { title: 'Temperature', unit: '°C', keys: ['temperature_2m', 'apparent_temperature', 'temp_s99'],
+    names: { temperature_2m: 'Temperature', apparent_temperature: 'Feels like', temp_s99: 'Smoothed' } },
+  { title: 'Solar radiation', unit: 'W/m²', keys: ['shortwave_radiation'] },
+  { title: 'Cloud cover', unit: '%', keys: ['cloud_cover'] },
+  { title: 'Wind speed', unit: 'km/h', keys: ['wind_speed_10m'] },
+  { title: 'Relative humidity', unit: '%', keys: ['relative_humidity_2m'] },
+  { title: 'Dew point', unit: '°C', keys: ['dew_point_2m'] },
+  { title: 'Precipitation', unit: 'mm', keys: ['precipitation'] },
+  { title: 'Embedded solar & wind', unit: 'MW', keys: ['embedded_solar_fc_mw', 'embedded_wind_fc_mw'],
+    names: { embedded_solar_fc_mw: 'Solar', embedded_wind_fc_mw: 'Wind' } },
+  { title: 'Rooftop PV', unit: 'MW', keys: ['pv_proxy_mw'] },
+]
+const CALENDAR = ['holiday', 'bridge_day', 'school_holiday_zones', 'holiday_eng', 'holiday_sct', 'holiday_wls']
+const STYLES = ['actual', 'fc', 'op']
+
+export function Inputs({ c }) {
+  const series = c.features?.series || []
+  if (!series.length) return null
+  const by = Object.fromEntries(series.map((s) => [s.key, s]))
+  const groups = GROUPS.filter((g) => g.keys.some((k) => by[k]))
+  const days = {}
+  for (const key of CALENDAR) {
+    const s = by[key]
+    if (!s) continue
+    for (const p of s.points) {
+      if (isNum(p.v) && p.v > 0) {
+        const d = new Intl.DateTimeFormat('en-GB', { timeZone: c.tz, weekday: 'short', day: 'numeric', month: 'short' })
+          .format(new Date(p.t))
+        days[d] = days[d] || new Set()
+        days[d].add(s.label)
+      }
+    }
   }
   return (
-    <div className="ap-cal">
-      <h3>Band calibration (split-conformal widening per lead bin)</h3>
-      {blocks.map(([model, rows]) => {
-        const cols = Object.keys(rows[0])
-        return (
-          <div key={model} className="ap-scroll">
-            <table>
-              <caption>{MODEL_LABEL[model] || model}</caption>
-              <thead><tr>{cols.map((k) => <th key={k}>{k.replaceAll('_', ' ')}</th>)}</tr></thead>
-              <tbody>{rows.map((r, i) => (
-                <tr key={i}>{cols.map((k) => <td key={k} className={isNum(r[k]) ? 'n' : ''}>{isNum(r[k]) ? +r[k].toFixed(3) : String(r[k] ?? '–')}</td>)}</tr>
-              ))}</tbody>
-            </table>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-/* --- feeds and issues ---------------------------------------------------------------- */
-
-export function Feeds({ c, feeds }) {
-  const own = c.feeds || []
-  // the live pulls only: a bootstrap (".history") pull is a one-off, not the feed's health
-  const pulls = (feeds || []).filter((f) => f.series?.startsWith('pull:') && f.series.includes(`${c.code}.`)
-    && !f.series.includes('.history'))
-  return (
     <section className="ap-card">
-      <header className="ap-card-head"><div><p className="ap-kicker">Inputs</p><h2>Feeds</h2></div></header>
-      <ul className="ap-feeds">
-        {own.map((f) => {
-          const future = isNum(f.age_min) && f.age_min < 0
+      <header className="ap-card-head">
+        <div><p className="ap-kicker">{c.name} · next 48 h</p><h2>Forecast inputs</h2></div>
+        <div className="ap-quick">
+          {Object.keys(days).length
+            ? Object.entries(days).map(([d, set]) => <span key={d} className="ap-chip on">{[...set].join(', ')} · {d}</span>)
+            : <span className="ap-chip">No holidays in the next 48 h</span>}
+        </div>
+      </header>
+      <div className="ap-inputs">
+        {groups.map((g) => {
+          const lines = g.keys.filter((k) => by[k]).map((k, i) => ({
+            key: k, label: g.names?.[k] || by[k].label, cls: STYLES[i % 3], dash: i === 2,
+            points: by[k].points.map((p) => ({ t: ms(p.t), v: p.v })),
+          }))
+          const nd = ['MW', 'W/m²', '%'].includes(g.unit) ? 0 : g.unit === 'mm' ? 2 : 1
           return (
-            <li key={f.series}>
-              <span className={`ap-status ${f.stale ? 'bad' : 'good'}`}>{f.stale ? '✕ stale' : '✓ fresh'}</span>
-              <span className="ap-feed-name">{SERIES_LABEL[f.series] || f.series}</span>
-              <span className="ap-feed-age mono">
-                {future ? `covers to ${localDateTime(f.newest_valid_time, c.tz)}`
-                  : `newest ${localTime(f.newest_valid_time, c.tz)} · ${age(f.age_min)} old`}
-              </span>
-            </li>
+            <figure key={g.title} className="ap-figure ap-input">
+              <figcaption><b>{g.title}</b><span>{g.unit}</span></figcaption>
+              {lines.length > 1 && <Legend items={lines.map((l) => ({ key: l.key, cls: l.cls, dash: l.dash, label: l.label }))} />}
+              <TimeChart tz={c.tz} height={150} lines={lines}
+                         fmt={(v) => `${v.toLocaleString('en-GB', { maximumFractionDigits: nd })} ${g.unit}`}
+                         axisFmt={(v) => v.toLocaleString('en-GB', { maximumFractionDigits: nd })}
+                         yLabel={g.unit} ariaLabel={`${g.title}, next 48 hours`} />
+            </figure>
           )
         })}
-        {pulls.map((f) => (
-          <li key={f.series}>
-            <span className={`ap-status ${f.ok ? 'good' : 'bad'}`}>{f.ok ? '✓ pull ok' : '✕ pull failed'}</span>
-            <span className="ap-feed-name">{f.series.replace('pull:', 'last pull ')}</span>
-            <span className="ap-feed-age mono">{utcTime(f.last_retrieved)}{f.message ? ` · ${f.message}` : ''}</span>
-          </li>
-        ))}
-        {!own.length && !pulls.length && <li className="ap-empty">No feed status in the snapshot.</li>}
-      </ul>
+      </div>
     </section>
   )
 }
 
-export function IssueStrip({ c, now }) {
-  const log = [...(c.issue_log || [])].slice(0, 24).reverse()
-  const ok = log.filter((x) => x.status === 'ok').length
-  const span = log.length ? (ms(log.at(-1).issue_time) - ms(log[0].issue_time)) / 3.6e6 : 0
+/* --- footer: the attribution the licences require, in one line ----------------------- */
+
+export function Footer() {
   return (
-    <section className="ap-card">
-      <header className="ap-card-head"><div><p className="ap-kicker">Service</p><h2>Hourly issues</h2></div></header>
-      {log.length ? (
-        <>
-          <ol className="ap-strip" aria-label="Last issues, oldest first">
-            {log.map((x) => (
-              <li key={x.issue_time} className={x.status === 'ok' ? 'ok' : 'bad'}
-                  title={`${utcTime(x.issue_time)} · ${x.status}${isNum(x.seconds) ? ` · ${x.seconds.toFixed(0)} s` : ''}${x.message ? ` · ${x.message}` : ''}`}>
-                <span className="sr">{utcTime(x.issue_time)} {x.status}</span>
-                {x.status === 'ok' ? '' : '✕'}
-              </li>
-            ))}
-          </ol>
-          <p className="ap-small">{ok} of the last {log.length} issues succeeded, over {span.toFixed(0)} h
-            (oldest left, newest right; the newest was {ageSince(log.at(-1).issue_time, now)} ago).
-            {log.at(-1)?.seconds ? ` The newest took ${log.at(-1).seconds.toFixed(0)} s.` : ''}</p>
-          {log.filter((x) => x.status !== 'ok').slice(-2).map((x) => (
-            <p key={x.issue_time} className="ap-small ap-fail mono">{utcTime(x.issue_time)}: {x.message || x.status}</p>
-          ))}
-        </>
-      ) : <p className="ap-empty">No issues logged yet.</p>}
-    </section>
-  )
-}
-
-/* --- why it missed ------------------------------------------------------------------- */
-
-export function Diagnosis({ c }) {
-  const d = c.diagnosis || {}
-  return (
-    <section className="ap-card">
-      <header className="ap-card-head"><div><p className="ap-kicker">Heuristic</p><h2>Weather or model?</h2></div></header>
-      {isNum(d.n) && d.n > 0 && isNum(d.r2_temperature) ? (
-        <>
-          <dl className="ap-kv">
-            <div><dt>Share of error variance explained by temperature</dt><dd className="ap-num">{pct(100 * d.r2_temperature, 0)}</dd></div>
-            <div><dt>Load error per K of weather error</dt><dd className="ap-num">{signedMw(d.slope_mw_per_k)}</dd></div>
-            <div><dt>Mean temperature forecast error</dt><dd className="ap-num">{isNum(d.mean_abs_temp_error_k) ? `${d.mean_abs_temp_error_k.toFixed(2)} K` : '–'}</dd></div>
-            <div><dt>Scored targets</dt><dd className="ap-num">{d.n.toLocaleString('en-GB')}</dd></div>
-          </dl>
-          <p className="ap-small">{MODEL_LABEL[d.model] || 'The shown model'}, over the last 30 days.{' '}
-            {d.note ? `${d.note.charAt(0).toUpperCase()}${d.note.slice(1)}.` : ''} Not a decomposition:
-            other weather variables are not attributed, and the short-lead weather is itself a forecast.</p>
-        </>
-      ) : <p className="ap-empty">{d.note || 'Not available yet.'}</p>}
-    </section>
-  )
-}
-
-/* --- notes and attribution ----------------------------------------------------------- */
-
-export function Notes({ c }) {
-  return (
-    <section className="ap-notes">
-      <h2>Reading this page</h2>
-      <ul>
-        <li><b>What is forecast ({c.name}).</b> {c.target}.{c.code === 'CH'
-          ? ' Swissgrid publishes it once a month, about 15 working days after the month ends, so no recent load is known when a Swiss forecast is made: the model forecasts from calendar and weather alone, and each forecast is scored when Swissgrid publishes. No operator forecasts this quantity. (ENTSO-E’s Swiss total load, which is published within hours, is a broader quantity; it was tested as a target and not chosen.)'
-          : ''}</li>
-        <li><b>Only live scores are Apollo’s accuracy.</b> Backtest numbers are labelled backtest; they come
-          from history, not from forecasts made in real time.</li>
-        <li><b>The operator is a reference, not a rival.</b> No claim is made that Apollo beats the grid
-          operator: the operator’s own forecast is shown and scored beside Apollo’s.</li>
-        <li><b>Shown and shadow.</b> Every model issues every hour. One is shown, chosen per country by a rule
-          written before any result; the others run in shadow mode and are scored the same way.</li>
-        <li><b>Nothing here is computed in your browser.</b> The page draws what the hourly service stored.</li>
-      </ul>
-    </section>
-  )
-}
-
-export function Attribution({ items }) {
-  return (
-    <footer className="ap-attr">
-      <p className="ap-badge-line"><span className="ap-badge">Built with PriorLabs-TabPFN</span></p>
-      <ul>{(items || []).map((a) => <li key={a}>{a}</li>)}</ul>
+    <footer className="ap-foot">
+      <span className="ap-badge">Built with PriorLabs-TabPFN</span>
+      <span>Data: RTE éCO2mix (Licence Ouverte 2.0) · Elexon BMRS © Elexon Limited · NESO · Swissgrid ·
+        ENTSO-E via Energy-Charts · Weather: Open-Meteo.com (CC BY 4.0)</span>
     </footer>
   )
 }

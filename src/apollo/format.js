@@ -11,7 +11,7 @@
 export const MODEL_LABEL = {
   tabpfn_v2: 'TabPFN v2',
   chronos2: 'Chronos-2',
-  average: 'Average of the two',
+  average: 'Ensemble',
   gbm: 'Gradient boosting',
   persistence: 'Persistence',
   naive_7d: 'Same period, 7 days earlier',
@@ -24,15 +24,6 @@ export const OPERATOR_LABEL = {
   'CH.op_da': 'ENTSO-E day-ahead forecast',
 }
 
-export const SERIES_LABEL = {
-  'FR.load': 'RTE load (éCO2mix real time)',
-  'FR.op_d1': 'RTE day-ahead forecast',
-  'GB.load': 'Elexon demand outturn (INDO)',
-  'GB.ndf': 'Elexon NDF',
-  'CH.load': 'Swissgrid end-user consumption (monthly)',
-  'CH.entsoe': 'ENTSO-E total load (archived for comparison)',
-  'CH.op_da': 'ENTSO-E day-ahead forecast (of total load)',
-}
 
 export const ms = (iso) => (iso ? Date.parse(iso) : NaN)
 
