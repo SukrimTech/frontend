@@ -3,7 +3,6 @@
 
   Two routes, both on the main API (backend/apollo.py):
     GET  /api/apollo/snapshot   everything the page draws, as the hourly service last wrote it
-    POST /api/apollo/ask        the agent: { prompt, answers } -> { result }
 
   The page computes no forecast and no score. Every number on it is a field of the snapshot, so
   a refusal is typed: a 503 means "nothing has been issued on this machine yet", which the page
@@ -40,9 +39,3 @@ async function call(path, init) {
 
 export const getSnapshot = () => call('/api/apollo/snapshot')
 
-export const ask = (prompt, answers = {}) =>
-  call('/api/apollo/ask', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt, answers }),
-  })
