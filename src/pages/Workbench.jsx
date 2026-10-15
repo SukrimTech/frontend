@@ -13,6 +13,8 @@ import { overlayFrom } from '../diagram/overlays.js'
 import { RAMPS } from '../diagram/tokens.js'
 import PythiaWorkbench from '../pythia/PythiaWorkbench.jsx'
 import { api as pythiaApi } from '../pythia/api.js'
+import HeliosWorkbench from '../helios/HeliosWorkbench.jsx'
+import { api as heliosApi } from '../helios/api.js'
 import '../workbench/workbench.css'
 import { useColumnResize } from '../workbench/ColumnResizer.jsx'
 
@@ -125,6 +127,9 @@ export default function Workbench() {
   // model workbench. The Pythia server's feeders are listed on the start screen.
   const [pythia, setPythia] = useState(null)
   const [pythiaFeeders, setPythiaFeeders] = useState(undefined)
+  // Rooftop-solar screening (Helios): open or not, and whether its server answers.
+  const [helios, setHelios] = useState(null)
+  const [heliosUp, setHeliosUp] = useState(undefined)
 
   const filePick = useRef(null)
   const dirPick = useRef(null)
@@ -143,6 +148,11 @@ export default function Workbench() {
     if (session || pythia) return
     pythiaApi.feeders().then((d) => setPythiaFeeders(d.feeders || []), () => setPythiaFeeders(null))
   }, [session, pythia])
+
+  useEffect(() => {
+    if (session || helios) return
+    heliosApi.health().then(() => setHeliosUp(true), () => setHeliosUp(false))
+  }, [session, helios])
 
   const absorb = useCallback((state) => {
     if (state.session) setSession(state.session)
@@ -293,6 +303,17 @@ export default function Workbench() {
       }
       if (found.length || firstPaint) setStudyFindings(found)
       if (docs.length) { setReports(docs); setUnread(tab !== 'report') }
+      if (ran.some((s) => s.result?.data?.handoff === 'helios')) {
+        say('assistant', 'Rooftop-solar hosting runs on its own feeders — its PV library of solved test '
+          + 'networks — not on the model open here.', {
+          node: (
+            <div className="wb-row">
+              <button className="wb-btn wb-btn-dark wb-btn-sm" onClick={() => setHelios({ kind: 'library' })}>
+                Open rooftop-solar screening</button>
+            </div>
+          ),
+        })
+      }
       if (ran.some((s) => s.result?.data?.handoff === 'pythia')) {
         say('assistant', 'EV charger siting runs on its own feeders — from its library, or traced '
           + 'from a map pin — not on the model open here.', {
@@ -347,6 +368,14 @@ export default function Workbench() {
     </>
   )
 
+  if (helios) {
+    return (
+      <HeliosWorkbench key={JSON.stringify(helios)} entry={helios} shared={SHARED}
+                       onExit={() => setHelios(null)}
+                       onOpenModel={() => { setHelios(null); setSession(null) }} />
+    )
+  }
+
   if (pythia) {
     return (
       <PythiaWorkbench key={JSON.stringify(pythia)} entry={pythia} shared={SHARED}
@@ -363,7 +392,8 @@ export default function Workbench() {
                      onDismiss={() => setStartError(null)} onStart={start}
                      onFiles={upload} onPickFiles={() => filePick.current?.click()}
                      onPickFolder={() => dirPick.current?.click()}
-                     pythiaFeeders={pythiaFeeders} onPythia={setPythia} />
+                     pythiaFeeders={pythiaFeeders} onPythia={setPythia}
+                     heliosUp={heliosUp} onHelios={setHelios} />
       </div>
     )
   }
@@ -383,7 +413,8 @@ export default function Workbench() {
               onFiles={() => filePick.current?.click()}
               onFolder={() => dirPick.current?.click()}
               onExamples={() => { setSession(null); setMessages([]); clearResults() }}
-              onPythia={() => setPythia({ kind: 'build' })} />
+              onPythia={() => setPythia({ kind: 'build' })}
+              onHelios={() => setHelios({ kind: 'library' })} />
 
       <div className="wb-cols" ref={cols.ref} style={cols.style}>
         <Assistant messages={messages} busy={busy} studies={studies}
@@ -473,7 +504,7 @@ export default function Workbench() {
 /* top bar                                                             */
 
 function TopBar({ title, ext, edits, busy, onUndo, onReset, onFiles, onFolder, onExamples,
-                  onPythia, badge, editing = true, menu: items }) {
+                  onPythia, onHelios, badge, editing = true, menu: items }) {
   const [menu, setMenu] = useState(false)
   const ref = useRef(null)
   useEffect(() => {
@@ -535,6 +566,11 @@ function TopBar({ title, ext, edits, busy, onUndo, onReset, onFiles, onFolder, o
                 <b>EV charger screening</b><span>Pythia’s feeders: its library, or one traced from a map pin</span>
               </button>
             )}
+            {onHelios && (
+              <button onClick={() => { setMenu(false); onHelios() }}>
+                <b>Rooftop solar screening</b><span>Helios: hosting capacity on its PV library’s feeders</span>
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -546,7 +582,7 @@ function TopBar({ title, ext, edits, busy, onUndo, onReset, onFiles, onFolder, o
 /* start screen                                                        */
 
 function StartScreen({ examples, busy, error, onDismiss, onStart, onFiles,
-                       onPickFiles, onPickFolder, pythiaFeeders, onPythia }) {
+                       onPickFiles, onPickFolder, pythiaFeeders, onPythia, heliosUp, onHelios }) {
   const [over, setOver] = useState(false)
   return (
     <div className="wb-start">
@@ -623,6 +659,20 @@ function StartScreen({ examples, busy, error, onDismiss, onStart, onFiles,
               <span className="wb-ex-about">Already built on this server — opening it costs nothing.</span>
             </button>
           ))}
+        </div>
+
+        {/* Rooftop-solar hosting (Helios) also works on its own feeders: its PV library. */}
+        <span className="wb-eyebrow">Or screen rooftop solar</span>
+        {heliosUp === false && (
+          <p className="wb-small">The Helios server is not answering — start it with
+            <code> .venv/Helios/bin/python -m backend.Helios.routes</code> (port 8003).</p>
+        )}
+        <div className="wb-examples">
+          <button disabled={busy} onClick={() => onHelios({ kind: 'library' })}>
+            <span className="wb-ex-name">Hosting capacity on a library feeder</span>
+            <span className="wb-mono wb-ex-fmt">rooftop PV</span>
+            <span className="wb-ex-about">How much rooftop solar each bus can take before the voltage goes above the limit — feasible, infeasible or inconclusive, with the model’s own uncertainty.</span>
+          </button>
         </div>
       </div>
     </div>

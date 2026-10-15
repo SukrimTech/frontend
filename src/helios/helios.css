@@ -1,0 +1,32 @@
+/*
+ * Helios in the Workbench — the rooftop-solar mode's own pieces. It borrows Pythia's drawing
+ * and its verdict language (pythia.css: circle feasible, square infeasible, diamond
+ * inconclusive, in ink / paper / mint), so the two hosting modes read the same; only the
+ * side-panel controls below are new. Scoped under `.wb.he`.
+ */
+
+.wb.he .he-select, .wb.he .he-field select {
+  width: 100%; font: inherit; padding: 6px 8px; border: 1px solid var(--ink); border-radius: 8px;
+  background: var(--paper);
+}
+.wb.he .he-field { display: grid; gap: 4px; margin: 8px 0; font-size: 12.5px; }
+.wb.he .he-field input[type='range'] { width: 100%; accent-color: var(--ink); }
+.wb.he .he-check { display: flex; gap: 6px; align-items: center; font-size: 12.5px; margin: 6px 0; }
+.wb.he .he-place { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0; }
+.wb.he .he-site { display: inline-flex; gap: 3px; }
+.wb.he .he-site input {
+  width: 58px; font: 12px var(--mono); padding: 3px 5px; border: 1px solid var(--ink); border-radius: 6px;
+  background: var(--paper);
+}
+.wb.he .he-mix { gap: 6px; margin: 4px 0 8px; }
+.wb.he .he-table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 6px 0; }
+.wb.he .he-table th { text-align: left; font: 600 10.5px var(--mono); text-transform: uppercase;
+  letter-spacing: .04em; border-bottom: 1px solid var(--ink); padding: 3px 4px; }
+.wb.he .he-table td { border-bottom: 1px solid rgba(17, 17, 17, .12); padding: 4px; vertical-align: middle; }
+.wb.he .he-legend { display: flex; gap: 14px; align-items: center; font-size: 11.5px; }
+.wb.he .he-legend span { display: inline-flex; gap: 5px; align-items: center; }
+.wb.he .he-l { stroke: var(--ink); stroke-width: 1.3; fill: var(--paper); }
+.wb.he .he-l.feasible { fill: var(--mint); }
+.wb.he .he-l.infeasible { fill: var(--ink); }
+.wb.he .he-l.inconclusive { stroke-width: 2.2; }
+.wb.he .wb-linkbtn { background: none; border: 0; padding: 0 2px; font: inherit; text-decoration: underline; cursor: pointer; }

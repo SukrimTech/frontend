@@ -27,6 +27,7 @@ export const NAV = [
       ['agents/ananke', 'Ananke — DC power flow and LOPF'],
       ['agents/iris', 'Iris — the diagram'],
       ['agents/pythia', 'Pythia — EV charger siting'],
+      ['agents/helios', 'Helios — rooftop solar hosting'],
       ['agents/hermes', 'Hermes — routing'],
     ],
   },

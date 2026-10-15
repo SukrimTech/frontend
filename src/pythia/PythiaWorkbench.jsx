@@ -441,6 +441,11 @@ export default function PythiaWorkbench({ entry, onExit, onOpenModel, shared }) 
             : ''))
         return DO[step.agent]()
       }
+      if (r.agent === 'helios') {
+        say('assistant', 'That is a rooftop-solar question. Helios answers it on its own PV library — '
+          + 'open **Rooftop solar screening** from the start screen or the Open… menu of the model workbench.')
+        return undefined
+      }
       if (r.agent) {
         say('assistant', `That is a question for another study (${r.agent}), which works on an opened network `
           + 'model rather than on Pythia’s feeders. Use **Open model** to load one.', { offerStudies: true })
